@@ -29,10 +29,10 @@ function startGame() {
   <main style="min-height: 100vh; display: grid; place-items: center; padding: 2rem;">
     <section style="max-width: 560px; width: 100%; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.5rem;">
       <h1 style="margin: 0 0 0.5rem; font-size: 1.25rem; font-weight: 700;">
-        Multiplayer Auction + Cow Trade
+        KUHHANDEL | 幕後交易
       </h1>
       <p style="margin: 0 0 1rem; color: #6b7280; font-size: 0.95rem;">
-        目前階段（phase）：<strong>{{ phase }}</strong>
+        目前階段(phase): <strong>{{ phase }}</strong>
       </p>
 
       <button
