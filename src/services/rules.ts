@@ -38,6 +38,7 @@ export const START_MONEY: Readonly<Record<MoneyDenom, number>> = Object.freeze({
  * - 仍需拍賣該驢子牌
  */
 export const DONKEY_PAYOUTS = [50, 100, 200, 500] as const;
+export type DonkeyPayoutIndex = 0 | 1 | 2 | 3;
 
 /**
  * 每種動物的分數（單張）
