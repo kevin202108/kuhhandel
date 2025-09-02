@@ -1,136 +1,130 @@
-# 🐮🐷🐴 Multiplayer Auction Game — Developer README
+下面是一份**整合版 Master README**。它彙總了你先前所有規格、規則、架構、設定檔與常見錯誤修復（含 Vitest `test` 鍵的設定方式）。任何人只看這份 README 就能各自完成所負責檔案而不互相衝突。之後你只需把這份 README 給我，並指定要我完成哪個檔案，我就能直接寫出對應的完整程式碼。
 
-> 這份 README **是唯一的合約**。
-> 任何檔案的負責人只要依本文件的**型別、介面與規則**實作，就不會與其他檔案衝突。
-> 之後你只需把這份 README 傳給我，並指定要我完成哪個檔案，我就能獨立完成其完整程式碼。
+---
+
+# 🐮🐷🐴 Multiplayer Auction + Cow Trade — Master README
+
+> 本文件是**唯一真相來源**（Single Source of Truth）。
+> 型別、介面、協定、規則、設定檔與指令都以此為準。
 
 ---
 
 ## 目錄
 
-1. 專案架構 (Project Structure)
-2. 資料型態 (Types)
-3. 狀態管理 (Pinia Stores)
-4. 儲存 (Persistence)
-5. 代碼間通信介面 (Component & Service Interfaces)
-6. 通訊協定 (Networking Protocol via Ably)
-7. 邏輯邊界 (Business Rules & UX Rules)
-8. 開發優先順序 (Roadmap)
-9. 驗收與測試 (Acceptance & Tests)
-10. 狀態機圖 (Mermaid)
+1. 專案架構（含每檔案職責）
+2. 資料型態（Types）
+3. 狀態管理（Pinia Stores）
+4. 儲存（Persistence）
+5. 元件 / Service 介面（Interfaces）
+6. 通訊協定（Ably / Host Authority）
+7. 邏輯邊界與 UX 規則（Business Rules）
+8. 設定檔與套件（package.json / tsconfig / vite / eslint / prettier / env / JSON 資料）
+9. 開發優先順序（Roadmap）
+10. 驗收與測試（Acceptance & Tests）
+11. 狀態機圖（Mermaid）
+12. 疑難排解：Vite `test` 設定錯誤修復
 
 ---
 
-# 1) 專案架構 (Project Structure)
+## 1) 專案架構（含職責）
 
-```text
+```
 my-vue-game/
 ├─ index.html                     # root #app + 載入 main.ts
 ├─ src/
-│  ├─ main.ts                     # 建立 App、註冊 Pinia、樣式
-│  ├─ App.vue                     # 根組件：依 phase 切畫面
+│  ├─ main.ts                     # 建立 App、Pinia、載入樣式
+│  ├─ App.vue                     # 根組件：依 phase/subphase 切頁
 │  ├─ assets/
 │  │  └─ main.css
 │  ├─ components/
-│  │  ├─ Hud.vue
-│  │  ├─ TurnChoice.vue
+│  │  ├─ Hud.vue                  # 玩家/錢/動物/牌庫/回合/Log
+│  │  ├─ TurnChoice.vue           # 兩鍵：Auction / Cow Trade（主要玩家）
 │  │  ├─ Auction/
-│  │  │  ├─ AuctionBidderView.vue
-│  │  │  ├─ AuctionHostView.vue
-│  │  │  ├─ MoneyPad.vue
-│  │  │  └─ BidList.vue
+│  │  │  ├─ AuctionBidderView.vue# 投標者：MoneyPad、確認出價/放棄
+│  │  │  ├─ AuctionHostView.vue  # 主持人：得標 / 買回（可禁用）
+│  │  │  ├─ MoneyPad.vue         # 錢卡按鈕群（多選、取消、合計）
+│  │  │  └─ BidList.vue          # 只顯示目前最高價（可選歷史）
 │  │  └─ CowTrade/
-│  │     ├─ CowTargetPicker.vue
-│  │     ├─ CowAnimalPicker.vue
-│  │     └─ CowConfirmBar.vue
+│  │     ├─ CowTargetPicker.vue  # 挑對手（僅列出有動物者）
+│  │     ├─ CowAnimalPicker.vue  # 挑對手擁有的動物種類（未被鎖）
+│  │     └─ CowConfirmBar.vue    # 秘密出錢提交（只傳 Host）
 │  ├─ store/
 │  │  ├─ game.ts                  # 回合、驢子發錢、計分、終局
-│  │  ├─ auction.ts               # 拍賣 bidding/closing/settlement
-│  │  └─ cow.ts                   # Cow Trade select/commit/reveal/settlement
+│  │  ├─ auction.ts               # bidding/closing/settlement
+│  │  └─ cow.ts                   # select/commit/reveal/settlement
 │  ├─ services/
-│  │  ├─ rules.ts                 # 常數、得分、驢子發錢表
-│  │  ├─ broadcast.ts             # Ably 抽象 (IBroadcast)
-│  │  └─ host-election.ts         # Host 選定與遷移
+│  │  ├─ rules.ts                 # 常數：SET_SIZE/分數/驢子發錢/面額等
+│  │  ├─ broadcast.ts             # Ably 抽象 IBroadcast（publish/subscribe/presence）
+│  │  └─ host-election.ts         # Host 選定/遷移（playerId 最小者）
 │  ├─ networking/
-│  │  ├─ ablyClient.ts            # Ably 初始化 / presence
-│  │  └─ protocol.ts              # 訊息封包與 schema 版本
+│  │  ├─ ablyClient.ts            # Ably 初始化、channel 工廠、presence
+│  │  └─ protocol.ts              # 封包 Envelope、type 常數、schemaVersion
 │  ├─ types/
-│  │  └─ game.ts                  # 全域 Type 定義（本 README 規格）
+│  │  └─ game.ts                  # 全域 Type（見下節）
 │  ├─ composables/
-│  │  ├─ usePhaseGuard.ts
-│  │  ├─ useAuctionViewRole.ts
-│  │  ├─ useMoneySelection.ts
-│  │  └─ useLog.ts
-│  └─ utils/
-│     ├─ id.ts
-│     └─ math.ts
+│  │  ├─ usePhaseGuard.ts         # 依 phase 控制可用操作
+│  │  ├─ useAuctionViewRole.ts    # 是否主持人
+│  │  ├─ useMoneySelection.ts     # MoneyPad 本地暫存（送出前不動真資產）
+│  │  └─ useLog.ts                # 記錄/格式化事件 Log
+│  ├─ utils/
+│  │  ├─ id.ts                    # uuid/nanoid
+│  │  └─ math.ts                  # 合計/比較輔助
+│  └─ data/
+│     └─ deck.json                # （可選）定義每動物 4 張的來源資料
 ├─ tsconfig.json
+├─ tsconfig.node.json
 ├─ package.json
+├─ vite.config.ts                 # 或 + vitest.config.ts（見第12節）
+├─ .eslintrc.cjs
+├─ .prettierrc
+├─ .env.example
 └─ vite.config.ts
 ```
 
-**技術棧**：Vue 3、Vite、TypeScript、Pinia、Ably Realtime（≤5 人）
-
 ---
 
-# 2) 資料型態 (Types)
+## 2) 資料型態（Types）— `src/types/game.ts`
 
-> **所有檔案**請只依賴下列型別（位於 `src/types/game.ts`），嚴禁自行擴充不在本表之內容。必要變更請回到此 README 更新。
+> 不可擅自擴充未列於此的型別；必要變更需先更新本 README。
 
 ```ts
-// src/types/game.ts
 export type Animal =
   | 'chicken' | 'goose' | 'cat' | 'dog' | 'sheep'
   | 'snake' | 'donkey' | 'pig' | 'cow' | 'horse';
 
 export type MoneyDenom = 0 | 10 | 50 | 100 | 200 | 500;
 
-export interface MoneyCard {
-  id: string;               // 唯一卡 id
-  value: MoneyDenom;
-}
+export interface MoneyCard { id: string; value: MoneyDenom; }
 
 export interface Player {
-  id: string;               // 用於 Host 選定（playerId 最小為 Host）
+  id: string;               // playerId 最小者為 Host
   name: string;
   moneyCards: MoneyCard[];
-  animals: Record<Animal, number>; // 每種動物持有張數
+  animals: Record<Animal, number>; // 每種動物持有數
 }
 
 export type CardKind = 'animal';
-export interface Card {
-  id: string;
-  kind: CardKind;           // 目前只有 'animal'
-  animal: Animal;           // 含 donkey
-}
+export interface Card { id: string; kind: CardKind; animal: Animal; }
 
 export type Phase =
-  | 'setup'
-  | 'turn.choice'
-  | 'auction.bidding'
-  | 'auction.closing'
-  | 'auction.settlement'
-  | 'cow.selectTarget'
-  | 'cow.selectAnimal'
-  | 'cow.commit'
-  | 'cow.reveal'
-  | 'cow.settlement'
-  | 'turn.end'
-  | 'game.end';
+  | 'setup' | 'turn.choice'
+  | 'auction.bidding' | 'auction.closing' | 'auction.settlement'
+  | 'cow.selectTarget' | 'cow.selectAnimal' | 'cow.commit' | 'cow.reveal' | 'cow.settlement'
+  | 'turn.end' | 'game.end';
 
 export interface Bid {
   playerId: string;
-  moneyCardIds: string[];   // 出價採「錢卡 id 集合快照」
-  total: number;            // 由錢卡合計
-  ts: number;               // Host 接收時間戳（先送先贏）
+  moneyCardIds: string[];   // 出價錢卡 id 快照
+  total: number;            // 合計
+  ts: number;               // Host 接收時間（先到先贏）
   actionId: string;         // 去重
 }
 
 export interface AuctionState {
-  auctioneerId?: string;    // 主持人=回合主要玩家
-  card?: Card;              // 正在拍賣的卡（驢子也會拍）
-  highest?: Bid;            // 僅保留最高價（平手比 ts，先到先贏）
-  passes: Set<string>;      // 放棄出價玩家（不含主持人）
+  auctioneerId?: string;
+  card?: Card;
+  highest?: Bid;            // 僅保留當前最高（同額比 ts）
+  passes: Set<string>;      // 放棄者（不含主持人）
   closed: boolean;
 }
 
@@ -138,8 +132,8 @@ export interface CowTradeState {
   initiatorId?: string;
   targetPlayerId?: string;
   targetAnimal?: Animal;
-  initiatorSecret?: string[]; // moneyCardIds（只在 Host 儲存）
-  targetSecret?: string[];    // moneyCardIds（只在 Host 儲存）
+  initiatorSecret?: string[]; // moneyCardIds（僅 Host 記憶體）
+  targetSecret?: string[];
 }
 
 export interface GameState {
@@ -155,225 +149,153 @@ export interface GameState {
   stateVersion: number;     // Host 每次更新 +1
 }
 
-// 規則常數（由 services/rules.ts 提供）
+// 由 services/rules.ts 輸出常數內容
 export interface Rules {
   SET_SIZE: 4;
   MONEY_DENOMS: MoneyDenom[];
-  START_MONEY: Record<MoneyDenom, number>; // {0:2,10:4,50:1}
-  DONKEY_PAYOUTS: [50, 100, 200, 500];     // 順序對應第 1~4 張驢子
-  ANIMAL_SCORES: Record<Animal, number>;   // 分數表
+  START_MONEY: Record<MoneyDenom, number>; // {0:2, 10:4, 50:1}
+  DONKEY_PAYOUTS: [50, 100, 200, 500];
+  ANIMAL_SCORES: Record<Animal, number>;
 }
 ```
 
 ---
 
-# 3) 狀態管理 (Pinia Stores)
+## 3) 狀態管理（Pinia Stores）
 
-> 所有 store **只暴露下列簽名**。實作者不得擴充新公開方法；若必要，請在此 README 更新。
+### `store/game.ts`
 
-## `store/game.ts`（全域）
+* **State**：`phase, players, deck, discard, turnOwnerId, donkeyDrawCount, log, stateVersion`
+* **Getters**
 
-**State**
-`phase, players, deck, discard, turnOwnerId, donkeyDrawCount, log, stateVersion`
+  * `activePlayer()`
+  * `playerById(id)`
+  * `remainingAuctionableAnimals()`
+  * `canChooseAuction()`（第一回合 or 牌庫判斷）
+  * `canChooseCowTrade()`（當前玩家是否有錢）
+  * `isAnimalLocked(animal)`（任一玩家達成 4 張）
+* **Actions**
 
-**Getters**
+  * `setupGame(players: Array<{id:string; name:string}>)`
+  * `startTurn()` → `phase='turn.choice'`
+  * `drawCardForAuction(): Card`
+  * `grantDonkeyPayout()`
+  * `rotateTurn()`
+  * `computeFinalScores(): Array<{playerId:string; score:number}>`
+  * `checkEndAndMaybeFinish()`
+  * `appendLog(msg: string)`
 
-* `activePlayer(): Player`
-* `playerById(id: string): Player | undefined`
-* `remainingAuctionableAnimals(): number`  // 牌庫中可拍賣動物（含驢子）
-* `canChooseAuction(): boolean`            // 第一回合/牌庫判斷
-* `canChooseCowTrade(): boolean`           // 當前玩家是否有錢
-* `isAnimalLocked(animal: Animal): boolean`// 任一玩家達到 4 張
+### `store/auction.ts`
 
-**Actions**
+* **State**：`auction: AuctionState | null`
+* **Getters**：`canAuctioneerBuyback()`
+* **Actions**
 
-* `setupGame(players: Array<{id: string; name: string}>): void`
-* `startTurn(): void`                                      // phase='turn.choice'
-* `drawCardForAuction(): Card`                             // 改動 deck，回傳 card
-* `grantDonkeyPayout(): void`                              // 依 donkeyDrawCount 發錢並 +1
-* `rotateTurn(): void`                                     // 切換 turnOwnerId
-* `computeFinalScores(): Array<{playerId: string; score: number}>`
-* `checkEndAndMaybeFinish(): void`                         // 若終局 → phase='game.end'
-* `appendLog(msg: string): void`
+  * `enterBidding()`
+  * `placeBid(playerId, moneyCardIds, actionId)`
+  * `passBid(playerId)`
+  * `hostAward()`
+  * `hostBuyback()`
+  * `settle(mode: 'award'|'buyback')` → 轉移資產、`phase='turn.end'`
 
-## `store/auction.ts`
+### `store/cow.ts`
 
-**State**
-`auction: AuctionState | null`
+* **State**：`cow: CowTradeState | null`
+* **Actions**
 
-**Getters**
+  * `selectTarget(targetPlayerId)`
+  * `selectAnimal(animal)`
+  * `commitSecret(playerId, moneyCardIds)`（僅送 Host）
+  * `revealAndResolve()`（平手不交換；否則勝者拿 1/2 張，互換提交錢卡）
 
-* `canAuctioneerBuyback(): boolean`    // 主持人是否能湊出等額錢卡
-
-**Actions**
-
-* `enterBidding(): void`               // 設定主持人、抽卡；驢子則先發錢後繼續
-* `placeBid(playerId: string, moneyCardIds: string[], actionId: string): void`
-* `passBid(playerId: string): void`    // passes 滿（非主持人人數）→ phase='auction.closing'
-* `hostAward(): void`                  // → phase='auction.settlement'
-* `hostBuyback(): void`                // guard 成功才可呼叫 → 'auction.settlement'
-* `settle(mode: 'award'|'buyback'): void` // 移轉錢卡/動物卡，→ 'turn.end'
-
-## `store/cow.ts`
-
-**State**
-`cow: CowTradeState | null`
-
-**Actions**
-
-* `selectTarget(targetPlayerId: string): void`      // → 'cow\.selectAnimal'
-* `selectAnimal(animal: Animal): void`              // 檢查可選 → 'cow\.commit'
-* `commitSecret(playerId: string, moneyCardIds: string[]): void` // 提交給 Host（本地僅標記）
-* `revealAndResolve(): void`                        // 平手：不交換；否則勝者拿 1/2 張；雙方互換提交錢卡 → 'turn.end'
-
-> **副作用原則**：資源真正移轉**只在** `auction.settlement` 與 `cow.revealAndResolve()` 內發生。出價/commit 只記快照。
+> 原則：**資產真正移轉**只在 `auction.settlement`、`cow.revealAndResolve()` 執行。
 
 ---
 
-# 4) 儲存 (Persistence)
+## 4) 儲存（Persistence）
 
-* **Host 端**
-
-  * `localStorage` key：`game:{roomId}` → `GameState` 完整快照（含 `stateVersion`）。
-  * **不得**持久化 Cow Trade 的 secret（僅記憶體保存）。
-
-* **Client 端（非 Host）**
-
-  * `localStorage` key：`session:{roomId}:{playerId}` → 最近一次 `stateVersion` + `playerId`。
-
-* **恢復流程**
-
-  * Client 重新連線 → 等待 Host 廣播 `state.update`；或送 `system.requestState`（可選）。
-  * Host 收到新成員/落後版本 → 主動推送 `state.update`。
-
-* **版本**
-
-  * `networking/protocol.ts` 需維護 `schemaVersion`。若 schema 變動，需處理舊快照相容或清除。
+* **Host 端**：`localStorage['game:{roomId}'] = GameState`（含 `stateVersion`）。
+  Cow Trade 的 `secret` **不可持久化**（僅記憶體）。
+* **Client 端**：`localStorage['session:{roomId}:{playerId}'] = { stateVersion, playerId }`
+* **重連恢復**：Client 加入後等待 Host 廣播 `state.update`；必要時可送 `system.requestState`（可選）
+* **schema**：`networking/protocol.ts` 維護 `schemaVersion`，做必要向後相容或清除舊存檔。
 
 ---
 
-# 5) 代碼間通信介面 (Interfaces)
+## 5) 元件 / Service 介面（Interfaces）
 
-## 元件 ↔ store
+### 元件與事件
 
-> 元件**只能**透過下列 props / emits 或直接讀取 store getters/state（讀），呼叫公開 actions（寫）。
+* `TurnChoice.vue`
 
-### `App.vue`
+  * props：`canAuction: boolean`, `canCowTrade: boolean`, `isFirstRound: boolean`
+  * emits：`choose-auction` | `choose-cow-trade`
+* `AuctionBidderView.vue`
 
-* 職責：依 `game.phase` 切畫面；不承擔業務邏輯。
+  * props：`self: Player`, `highest?: Bid`
+  * emits：`place-bid(moneyCardIds: string[])`, `pass()`
+* `AuctionHostView.vue`
 
-### `Hud.vue`
+  * props：`highest?: Bid`, `canBuyback: boolean`
+  * emits：`award()`, `buyback()`
+* `MoneyPad.vue`
 
-* 讀：`players, turnOwnerId, donkeyDrawCount, deck.length, log`
-* 不發事件（純顯示）。
+  * props：`moneyCards: MoneyCard[]`, `selectedIds: string[]`
+  * emits：`toggle(id)`, `clear()`, `confirm(moneyCardIds)`
+* `CowTargetPicker.vue`
 
-### `TurnChoice.vue`
+  * props：`candidates: Player[]`（僅有動物者）
+  * emits：`select-target(playerId)`
+* `CowAnimalPicker.vue`
 
-* props：`canAuction: boolean`, `canCowTrade: boolean`, `isFirstRound: boolean`
-* emits：`choose-auction`, `choose-cow-trade`
-* 行為：第一回合 `canCowTrade=false`。
+  * props：`target: Player`, `locked: Record<Animal, boolean>`
+  * emits：`select-animal(animal)`
+* `CowConfirmBar.vue`
 
-### `Auction/AuctionBidderView.vue`
+  * emits：`commit-secret(moneyCardIds: string[])`
 
-* props：`self: Player`, `highest?: Bid`
-* emits：`place-bid`(moneyCardIds: string\[]), `pass`
-* 使用 `useMoneySelection()` 管理本地選擇。
+### Composables（選要點）
 
-### `Auction/AuctionHostView.vue`
+* `usePhaseGuard` → `isActionAllowed(action: string): boolean`
+* `useAuctionViewRole` → `isHost(myId: string): boolean`
+* `useMoneySelection` → `selectedIds[]`, `toggle()`, `clear()`, `total()`
+* `useLog` → `push(msg: string)`
 
-* props：`highest?: Bid`, `canBuyback: boolean`
-* emits：`award`, `buyback`
+### Services
 
-### `Auction/MoneyPad.vue`
+* `services/rules.ts`：輸出常數（見下方第 8 節）
+* `services/broadcast.ts`
 
-* props：`moneyCards: MoneyCard[]`, `selectedIds: string[]`
-* emits：`toggle`(moneyCardId: string), `clear`, `confirm`(moneyCardIds: string\[])
+  ```ts
+  export interface IBroadcast {
+    publish<T>(topic: string, payload: T): Promise<void>;
+    subscribe<T>(topic: string, handler: (payload: T) => void): () => void;
+    presence(): {
+      enter(meta: { playerId: string; name: string }): Promise<void>;
+      leave(): Promise<void>;
+      getMembers(): Promise<Array<{ id: string; data: any }>>;
+    };
+  }
+  ```
+* `services/host-election.ts`
 
-### `Auction/BidList.vue`
-
-* props：`highest?: Bid`
-* 無 emits（純顯示）。
-
-### `CowTrade/CowTargetPicker.vue`
-
-* props：`candidates: Player[]`  // 僅列出「有動物」的玩家
-* emits：`select-target`(playerId: string)
-
-### `CowTrade/CowAnimalPicker.vue`
-
-* props：`target: Player`, `locked: Record<Animal, boolean>` // true=不可選
-* emits：`select-animal`(animal: Animal)
-
-### `CowTrade/CowConfirmBar.vue`
-
-* emits：`commit-secret`(moneyCardIds: string\[])
-
-## Composables
-
-### `usePhaseGuard.ts`
-
-* `isActionAllowed(action: string): boolean` // 用於控制按鈕禁用
-
-### `useAuctionViewRole.ts`
-
-* `isHost(selfId: string): boolean`         // 是否為主持人
-
-### `useMoneySelection.ts`
-
-* `selectedIds: string[]`
-* `toggle(id: string): void`
-* `clear(): void`
-* `total(): number`
-
-### `useLog.ts`
-
-* `push(msg: string): void`                 // 包裝 `game.appendLog`
-
-## Services
-
-### `services/rules.ts`（僅輸出常數）
-
-* `SET_SIZE = 4`
-* `MONEY_DENOMS: MoneyDenom[] = [0,10,50,100,200,500]`
-* `START_MONEY: Record<MoneyDenom, number> = {0:2, 10:4, 50:1}`
-* `DONKEY_PAYOUTS: [50,100,200,500]`
-* `ANIMAL_SCORES: Record<Animal, number> = { chicken:10, goose:40, cat:90, dog:160, sheep:250, snake:350, donkey:500, pig:650, cow:800, horse:1000 }`
-
-### `services/broadcast.ts`
-
-```ts
-export interface IBroadcast {
-  publish<T>(topic: string, payload: T): Promise<void>;
-  subscribe<T>(topic: string, handler: (payload: T) => void): () => void;
-  presence(): {
-    enter(meta: { playerId: string; name: string }): Promise<void>;
-    leave(): Promise<void>;
-    getMembers(): Promise<Array<{ id: string; data: any }>>;
-  };
-}
-```
-
-### `services/host-election.ts`
-
-* `getHostId(members: Array<{id: string}>): string` // 取最小 playerId
-* `shouldReelect(oldHostId: string, members: string[]): boolean`
+  * `getHostId(members: Array<{id: string}>): string` // 取最小 playerId
+  * `shouldReelect(oldHostId: string, members: string[]): boolean`
 
 ---
 
-# 6) 通訊協定 (Networking Protocol via Ably)
+## 6) 通訊協定（Ably / Host Authority）
 
-**通則**
-
-* **Host Authority**：playerId **最小者**為 Host；Host 離線 → 依序轉移。
-* **每次事件**由 Host 驗證並**廣播完整快照** `state.update`（攜帶 `stateVersion`）。
-* **同時出價**：以 Host 接收時間 `ts` 排序；同額先到先贏。
+* **Host Authority**：`playerId` 最小者為 Host；掉線即依序移轉。
+* **每次事件** → Host 驗證 → **廣播完整快照** `state.update`（含 `stateVersion`）。
+* **同時出價**：以 Host 接收 `ts` 排序；同額先到先贏。
 * **去重**：所有 `action.*` 必帶 `actionId`（uuid）。
 
-## Channel 命名
+### Channel
 
-* `game-{roomId}`（單一頻道、最多 5 人）
+* `game-{roomId}`（單一頻道，≤5 人）
 
-## Envelope（外層封包）
+### 封包 Envelope — `networking/protocol.ts`
 
 ```ts
 export interface Envelope<T = any> {
@@ -382,13 +304,13 @@ export interface Envelope<T = any> {
   senderId: string;         // playerId
   actionId?: string;        // 僅 action.*
   stateVersion?: number;    // 僅 state.update
-  ts: number;               // Host 接收或廣播時間
+  ts: number;               // Host 接收/廣播時間
   payload: T;
-  schemaVersion: number;    // networking/protocol.ts 維護
+  schemaVersion: number;    // 例如 1
 }
 ```
 
-## Actions（Client → Host）
+### Actions（Client → Host）
 
 ```ts
 type ActionPlaceBid       = { playerId: string; moneyCardIds: string[] };
@@ -398,138 +320,307 @@ type ActionChooseCowTrade = { playerId: string };
 type ActionSelectCowTarget= { playerId: string; targetId: string };
 type ActionSelectCowAnimal= { playerId: string; animal: Animal };
 type ActionCommitCowTrade = { playerId: string; moneyCardIds: string[] }; // 僅 Host 可見
-type ActionHostAward      = { playerId: string };    // 只有主持人可發
-type ActionHostBuyback    = { playerId: string };    // 只有主持人可發
+type ActionHostAward      = { playerId: string }; // 主持人
+type ActionHostBuyback    = { playerId: string }; // 主持人
 ```
 
-## State（Host → All）
+### State（Host → All）
 
 ```ts
-type StateUpdate = { state: GameState }; // Host 每更新一次 stateVersion+1
+type StateUpdate = { state: GameState }; // 每次完整快照
 ```
 
-## System / Presence
+### System / Presence
 
 ```ts
-type SystemJoin        = { playerId: string; name: string };
-type SystemLeave       = { playerId: string };
-type SystemHostChanged = { newHostId: string };
-type SystemRequestState= { requesterId: string }; // 可選
+type SystemJoin         = { playerId: string; name: string };
+type SystemLeave        = { playerId: string };
+type SystemHostChanged  = { newHostId: string };
+type SystemRequestState = { requesterId: string }; // 可選
 ```
 
-## Host 遷移流程
+### Host 遷移
 
-1. Presence 偵測舊 Host 離線。
-2. 選剩餘成員中 **最小 playerId** 為新 Host。
-3. 廣播 `system.hostChanged`。
-4. 新 Host 立即廣播 `state.update` 快照。
+1. Presence 偵測舊 Host 離線
+2. 以剩餘玩家 `playerId` 最小者接任
+3. 廣播 `system.hostChanged` → 新 Host 立即廣播最新 `state.update`
 
-## Cow Trade 秘密傳輸
+### Cow Trade 秘密
 
-* `action.commitCowTrade` 只送 **Host**（不在公共頻道明文廣播）。
-* 收齊雙方提交後由 Host `cow.reveal` → 廣播 `state.update`。
+* `action.commitCowTrade` 僅送 Host；Reveal 後由 Host 廣播結果。
 
 ---
 
-# 7) 邏輯邊界 (Business Rules & UX Rules)
+## 7) 邏輯邊界與 UX 規則（Business Rules）
 
-## 核心規則
+**全局**
 
-* **第一回合**：無人有動物 → 只能拍賣，Cow Trade 禁用。
-* **棄牌堆不重洗**；無回合上限。
-* **沒錢玩家**：禁用出價、禁用發起 Cow Trade（仍可被挑戰）。
+* 第一回合：無人有動物 → 只能拍賣（Cow Trade 禁用）
+* 棄牌堆不重洗；無回合上限
+* 沒錢玩家：禁用出價、禁用發起 Cow Trade（仍可被挑戰）
 
-## 拍賣 (Auction)
+**拍賣**
 
-* 主持人**必須**參與結標（不能放棄）。
-* **無人出價** → 主持人直接拿牌。
-* **出價**：允許多次加碼/覆蓋；僅保留**目前最高價**並廣播。
-* **平手**：先出價者優先（以 Host 接收 `ts`）。
-* **買回**：主持人可買回；需能湊出**等額錢卡**（不足則按鈕禁用）。
-* **結算**：在 `auction.settlement` 一次性移轉錢卡/動物卡，寫 log。
+* 主持人必須參與結標
+* 無人出價 → 主持人直接拿牌
+* 出價可多次加碼；只保留當前**最高價**並廣播
+* 平手：先出價者優先（以 Host `ts`）
+* 買回：主持人需能湊等額錢卡，不足則禁用
+* 結算：在 `auction.settlement` 一次性轉移錢卡/動物卡並寫 log
 
-## 驢子事件
+**驢子事件**
 
-* 共有 4 張；每抽一張，全員獲得：
+* 共 4 張；每抽一張，全員獲得：第1隻 +50、第2隻 +100、第3隻 +200、第4隻 +500
+* 該驢子仍照常拍賣
 
-  * 第1隻 +50、第2隻 +100、第3隻 +200、第4隻 +500
-* 驢子牌**仍需拍賣**（同拍賣流程）。
+**Cow Trade**
 
-## Cow Trade
+* 每回合僅能發起一次；完成即結束回合
+* 只能挑「有動物」的玩家（不論是否有錢）
+* 只能選對手持有且未被鎖（已有玩家集滿 4 張即鎖）的動物
+* 秘密出錢：雙方提交錢卡，不可撤回，僅 Host 知
+* 平手：不交換動物、不交換錢卡 → 直接結束回合
+* 結算：雙方該動物各 ≥2 → 勝者拿 2 張；否則拿 1 張；雙方互換提交錢卡
 
-* 一回合僅能**發起一次**；完成後立刻結束回合。
-* **選對手**：限定「有動物」的玩家（不論是否有錢）。
-* **選動物**：限定對手持有且**未被鎖**（有人已集滿 4 張即鎖）。
-* **秘密出錢**：雙方提交錢卡（不可撤回），只傳 Host。
-* **平手**：不交換動物，不交換錢卡，直接結束回合。
-* **結算**：
+**終局與計分**
 
-  * 若雙方該動物各 ≥2 → 勝者拿 **2 張**；
-  * 否則拿 **1 張**；
-  * 雙方互換各自提交的錢卡。
-
-## 終局與計分
-
-* **終局**：所有動物種類至少有一名玩家湊齊 **4 張**（SET\_SIZE）。
-* **分數**：
-
-  * 動物分值：雞10、鵝40、貓90、狗160、羊250、蛇350、驢500、豬650、牛800、馬1000
-  * 玩家總分 = （持有動物分值總和） × （完成的 4 張組數總和）
-  * 不考慮額外加成。
-
-## UX 規則
-
-* 出價確認前可取消；**送出後不可撤回**。
-* 進入 Auction / Cow Trade 後**不可返回** `turn.choice`。
-* 不自動 pass（需手動）。
-* MoneyPad：每張錢卡即一顆按鈕；點選加入/取消，底部顯示合計與確認。
+* 終局：所有動物種類至少有一位玩家集滿 4 張
+* 分數表：雞10、鵝40、貓90、狗160、羊250、蛇350、驢500、豬650、牛800、馬1000
+* 玩家總分 =（自有動物分值總和）×（完成的 4 張組數總和）
 
 ---
 
-# 8) 開發優先順序 (Roadmap)
+## 8) 設定檔與套件
 
-1. **Phase 0 – 基礎骨架**
-   型別、rules、Hud、TurnChoice、log。
+### `package.json`
 
-2. **Phase 1 – 單機 MVP**
-   game（回合/驢子/終局/計分）、auction（得標），測試出價/無人出價/驢子。
+```json
+{
+  "name": "my-vue-game",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Multiplayer Auction + Cow Trade (Vue 3 + Pinia + Ably)",
+  "type": "module",
+  "engines": { "node": ">=18.17.0" },
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview --strictPort --port 5173",
+    "type-check": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "test:ui": "vitest --ui",
+    "lint": "eslint --ext .ts,.vue src",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "ably": "^1.2.38",
+    "mitt": "^3.0.1",
+    "nanoid": "^5.0.7",
+    "pinia": "^2.1.7",
+    "vue": "^3.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@vitejs/plugin-vue": "^5.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.8.0",
+    "@typescript-eslint/parser": "^7.8.0",
+    "eslint": "^8.57.0",
+    "eslint-plugin-vue": "^9.26.0",
+    "happy-dom": "^14.10.0",
+    "prettier": "^3.3.0",
+    "typescript": "^5.4.0",
+    "vite": "^5.2.0",
+    "vitest": "^1.6.0",
+    "vue-tsc": "^2.0.21"
+  }
+}
+```
 
-3. **Phase 2 – Ably 整合（Host Authority）**
-   broadcast、ablyClient、presence、完整快照 `state.update`、actionId 去重、stateVersion。
+### `tsconfig.json`
 
-4. **Phase 3 – 拍賣強化**
-   buyback + guard、平手先到先贏（ts）。
+```json
+{
+  "extends": "./tsconfig.node.json",
+  "compilerOptions": {
+    "composite": true,
+    "tsBuildInfoFile": "./node_modules/.cache/tsbuildinfo",
+    "baseUrl": ".",
+    "paths": { "@/*": ["src/*"] },
+    "jsx": "preserve",
+    "types": ["vite/client", "vitest", "node"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "useDefineForClassFields": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.vue", "env.d.ts"]
+}
+```
 
-5. **Phase 4 – Cow Trade**
-   selectTarget/selectAnimal/commit/reveal/settlement（秘密只給 Host）。
+### `tsconfig.node.json`
 
-6. **Phase 5 – 韌性與 UX**
-   斷線恢復、禁用邏輯（第一回合/沒錢/動物鎖）、log 豐富化。
+```json
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "allowJs": false,
+    "resolveJsonModule": true,
+    "skipLibCheck": true
+  }
+}
+```
 
-7. **Phase 6 – 測試與打磨**
-   單元/整合測試（stores + protocol）、Host 遷移與快照保底、行動裝置 UI。
+### Vite / Vitest（擇一，詳見第 12 節）
+
+**方案 A（單檔）**：`vite.config.ts` 用 `vitest/config` 的 `defineConfig`，可含 `test`
+**方案 B（分檔）**：`vite.config.ts`（無 `test`）+ `vitest.config.ts`（含 `test`）
+
+#### 方案 A：`vite.config.ts`
+
+```ts
+import { defineConfig } from 'vitest/config';
+import vue from '@vitejs/plugin-vue';
+import path from 'node:path';
+
+export default defineConfig({
+  plugins: [vue()],
+  resolve: { alias: { '@': path.resolve(process.cwd(), 'src') } },
+  server: { port: 5173, strictPort: true },
+  test: {
+    environment: 'happy-dom',
+    globals: true,
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    coverage: { reporter: ['text', 'html'] }
+  }
+});
+```
+
+#### 方案 B：`vite.config.ts`
+
+```ts
+import { defineConfig } from 'vite';
+import vue from '@vitejs/plugin-vue';
+import path from 'node:path';
+
+export default defineConfig({
+  plugins: [vue()],
+  resolve: { alias: { '@': path.resolve(process.cwd(), 'src') } },
+  server: { port: 5173, strictPort: true }
+});
+```
+
+`vitest.config.ts`
+
+```ts
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    environment: 'happy-dom',
+    globals: true,
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    coverage: { reporter: ['text', 'html'] }
+  }
+});
+```
+
+### ESLint / Prettier
+
+`.eslintrc.cjs`
+
+```js
+module.exports = {
+  root: true,
+  env: { browser: true, es2022: true },
+  parser: '@typescript-eslint/parser',
+  parserOptions: { ecmaVersion: 'latest', sourceType: 'module', extraFileExtensions: ['.vue'] },
+  extends: ['plugin:vue/vue3-recommended', 'plugin:@typescript-eslint/recommended'],
+  rules: {
+    'vue/multi-word-component-names': 'off',
+    '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }]
+  },
+  ignorePatterns: ['dist', 'node_modules']
+};
+```
+
+`.prettierrc`
+
+```json
+{ "singleQuote": true, "semi": true, "printWidth": 100, "trailingComma": "es5" }
+```
+
+### `.env.example`
+
+```
+VITE_ABLY_API_KEY=YOUR-ABLY-API-KEY
+VITE_APP_NAME=MyVueGame
+```
+
+### `.gitignore`
+
+```
+/node_modules/
+/dist/
+.vscode/
+.idea/
+.DS_Store
+*.local
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+/node_modules/.cache/
+```
+
+### `src/data/deck.json`（可選）
+
+```json
+{
+  "animals": ["chicken","goose","cat","dog","sheep","snake","donkey","pig","cow","horse"],
+  "setSize": 4
+}
+```
+
+### `services/rules.ts`（常數單一來源）
+
+* `SET_SIZE = 4`
+* `MONEY_DENOMS = [0,10,50,100,200,500]`
+* `START_MONEY = {0:2, 10:4, 50:1}`
+* `DONKEY_PAYOUTS = [50,100,200,500]`
+* `ANIMAL_SCORES = { chicken:10, goose:40, cat:90, dog:160, sheep:250, snake:350, donkey:500, pig:650, cow:800, horse:1000 }`
 
 ---
 
-# 9) 驗收與測試 (Acceptance & Tests)
+## 9) 開發優先順序（Roadmap）
 
-**關鍵案例**
-
-* 驢子連抽：按第 1\~4 張正確發錢，且仍進拍賣。
-* 拍賣無人出價：主持人直接拿牌。
-* 出價平手：先到先贏，不覆蓋既有最高價。
-* 買回資金不足：按鈕禁用。
-* 第一回合：Cow Trade 禁用。
-* Cow Trade：對手需有動物；動物若被鎖（已有人湊滿 4 張）不可選。
-* Cow Trade 平手：不交換動物、不交換錢卡。
-* Cow Trade 結算：雙方各≥2 → 2 張；否則 1 張；交換提交的錢卡。
-* 終局判定與計分正確。
-* Ably：action.\* → Host 驗證 → state.update（完整快照）；重新連線能同步最新狀態。
-* Host 遷移：舊 Host 離線 → 依 playerId 最小者接任並廣播。
+1. **Phase 0**：骨架、型別、rules、Hud/TurnChoice、Log
+2. **Phase 1**：本地單機 MVP（game + auction: award 流、終局/計分）
+3. **Phase 2**：Ably（Host Authority、presence、完整快照 state.update、actionId 去重、stateVersion）
+4. **Phase 3**：Auction 買回 + guard；平手先到先贏（ts）
+5. **Phase 4**：Cow Trade（select/commit/reveal/settlement；秘密只給 Host）
+6. **Phase 5**：韌性/UX（斷線恢復、禁用邏輯、log 強化）
+7. **Phase 6**：測試加強（stores + 協定）、Host 遷移保底、行動版 UI
 
 ---
 
-# 10) 狀態機圖 (Mermaid)
+## 10) 驗收與測試（Acceptance & Tests）
+
+* 驢子連抽：按第 1\~4 張正確發錢，仍進拍賣
+* 拍賣無人出價：主持人直接拿牌
+* 出價平手：先到先贏（不覆蓋既有最高）
+* 買回資金不足：按鈕禁用
+* 第一回合：Cow Trade 禁用
+* Cow Trade：對手需有動物；被鎖動物不可選
+* Cow Trade 平手：不交換動物與錢卡
+* Cow Trade 結算：雙方各 ≥2 → 2 張；否則 1 張；互換提交錢卡
+* 終局與計分正確
+* Ably：action.\* → Host 驗證 → state.update（完整快照）；重連拿到最新快照
+* Host 遷移：舊 Host 離線 → 最小 playerId 接任並廣播
+
+---
+
+## 11) 狀態機圖（Mermaid）
 
 ```mermaid
 stateDiagram-v2
@@ -567,8 +658,21 @@ stateDiagram-v2
 
 ---
 
-## 最後說明
+## 快速啟動
 
-* 本 README 為**唯一真相來源**（Single Source of Truth）。
-* 任何檔案的實作者**只需遵循本文件**的型別、介面、事件與規則即可，不必讀取其他檔案內容。
-* 之後若你要我**實作某個檔案**，請只把「檔名」與本 README 給我即可。
+```bash
+npm i
+cp .env.example .env   # 填入 VITE_ABLY_API_KEY
+npm run dev
+# 檢查/測試/建置
+npm run type-check
+npm test
+npm run build && npm run preview
+```
+
+---
+
+### 使用說明
+
+* 想要我**直接完成某個檔案的完整程式碼**：只需把「檔名＋本 README」給我即可。
+* 若要修改規則或介面：先更新本 README，再實作，避免互相踩到。
