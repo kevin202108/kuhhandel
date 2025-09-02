@@ -4,11 +4,9 @@
     "composite": true,
     "tsBuildInfoFile": "./node_modules/.cache/tsbuildinfo",
     "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"]
-    },
+    "paths": { "@/*": ["src/*"] },
     "jsx": "preserve",
-    "types": ["vite/client", "node"],
+    "types": ["vite/client", "vitest", "node"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "useDefineForClassFields": true
