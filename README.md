@@ -540,12 +540,11 @@ type SystemRequestState = { requesterId: string }; // 可選
 }
 ```
 
-### Vite / Vitest（擇一，詳見第 12 節）
+### Vite
 
-**方案 A（單檔）**：`vite.config.ts` 用 `vitest/config` 的 `defineConfig`，可含 `test`
-**方案 B（分檔）**：`vite.config.ts`（無 `test`）+ `vitest.config.ts`（含 `test`）
+**單檔**：`vite.config.ts` 用 `vitest/config` 的 `defineConfig`，可含 `test`
 
-#### 方案 A：`vite.config.ts`
+#### `vite.config.ts`
 
 ```ts
 import { defineConfig } from 'vitest/config';
@@ -556,35 +555,6 @@ export default defineConfig({
   plugins: [vue()],
   resolve: { alias: { '@': path.resolve(process.cwd(), 'src') } },
   server: { port: 5173, strictPort: true },
-  test: {
-    environment: 'happy-dom',
-    globals: true,
-    include: ['src/**/*.{test,spec}.{ts,tsx}'],
-    coverage: { reporter: ['text', 'html'] }
-  }
-});
-```
-
-#### 方案 B：`vite.config.ts`
-
-```ts
-import { defineConfig } from 'vite';
-import vue from '@vitejs/plugin-vue';
-import path from 'node:path';
-
-export default defineConfig({
-  plugins: [vue()],
-  resolve: { alias: { '@': path.resolve(process.cwd(), 'src') } },
-  server: { port: 5173, strictPort: true }
-});
-```
-
-`vitest.config.ts`
-
-```ts
-import { defineConfig } from 'vitest/config';
-
-export default defineConfig({
   test: {
     environment: 'happy-dom',
     globals: true,
@@ -751,9 +721,7 @@ npm run build && npm run preview
 
 ## 12) 疑難排解：Vite `test` 設定錯誤修復
 
-> 若你把 `vitest` 的 `test` 設定放在 `vite.config.ts`（方案 A），請務必 `import { defineConfig } from 'vitest/config'`；
-> 若分檔（方案 B），則 `vite.config.ts` 需使用 `vite` 的 `defineConfig`，並把 `test` 相關設定全放到 `vitest.config.ts`。
-> 兩方案**擇一**，勿同時混用 `test` 鍵，否則會出現「未知的 test 屬性」或 `vitest` 無法讀到設定的問題。
+> 把 `vitest` 的 `test` 設定放在 `vite.config.ts`，務必 `import { defineConfig } from 'vitest/config'`；
 
 ---
 
