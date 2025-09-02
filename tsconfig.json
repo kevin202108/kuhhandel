@@ -3,5 +3,9 @@
   "references": [
     { "path": "./tsconfig.app.json" },
     { "path": "./tsconfig.node.json" }
-  ]
+  ],
+  "compilerOptions": {
+    "lib": ["ES2017", "DOM"],  // ES2015 以上都可；有前端就加 DOM
+    "target": "ES2017"         // 目標版本可高於或等於 ES2015
+  }
 }
