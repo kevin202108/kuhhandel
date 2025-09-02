@@ -7,7 +7,7 @@ export type MoneyDenom = 0 | 10 | 50 | 100 | 200 | 500;
 export interface MoneyCard { id: string; value: MoneyDenom; }
 
 export interface Player {
-  id: string;               // playerId 最小者為 Host
+  id: string;               // playerId 最小者為 Host（字典序）
   name: string;
   moneyCards: MoneyCard[];
   animals: Record<Animal, number>; // 每種動物持有數
@@ -34,7 +34,7 @@ export interface AuctionState {
   auctioneerId?: string;
   card?: Card;
   highest?: Bid;            // 僅保留當前最高（同額比 ts）
-  passes: Set<string>;      // 放棄者（不含主持人）
+  passes: string[];         // **JSON 可序列化**（由 Set 改為 string[]）
   closed: boolean;
 }
 
@@ -42,7 +42,7 @@ export interface CowTradeState {
   initiatorId?: string;
   targetPlayerId?: string;
   targetAnimal?: Animal;
-  initiatorSecret?: string[]; // moneyCardIds（僅 Host 記憶體）
+  initiatorSecret?: string[]; // moneyCardIds（僅 Host 記憶體，不持久化）
   targetSecret?: string[];
 }
 
