@@ -25,7 +25,11 @@ export const BusFactoryKey: InjectionKey<BusFactory> = Symbol('busFactory');
 // --------------------
 const ABLY_API_KEY = (import.meta.env.VITE_ABLY_API_KEY ?? '') as string;
 const APP_NAME = (import.meta.env.VITE_APP_NAME ?? 'MyVueGame') as string;
-
+const ABLY_KEY = import.meta.env.VITE_ABLY_API_KEY as string | undefined;
+if (!ABLY_KEY) {
+  // 立即失敗，避免你以為有連線
+  throw new Error('Missing VITE_ABLY_API_KEY in .env');
+}
 // --------------------
 // Helpers (no any)
 // --------------------
