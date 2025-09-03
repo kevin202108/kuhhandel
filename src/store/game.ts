@@ -305,19 +305,35 @@ export const useGameStore = defineStore('game', {
 
     /**
      * 計分：
-     * 玩家總分 =（自有動物分值總和）×（完成的 4 張組數總和）
+     * 玩家總分 =（完成 4 張的那些動物的分值總和）×（完成 4 張的動物組數）
      * - 自有動物分值總和：該玩家擁有數量 > 0 的所有動物分值相加
      * - 完成組數：該玩家動物種類中，數量 >= SET_SIZE 的種類數
      */
     computeFinalScores(): Array<{ playerId: string; score: number }> {
-      const scores = this.players.map((p) => {
-        const base = animalBaseSum(p);
-        const sets = completeSetCount(p);
-        const score = base * sets;
-        return { playerId: p.id, score };
+      const setSize = SET_SIZE;
+
+      const scoreOf = (animal: Animal) => ANIMAL_SCORES[animal];
+
+      const results = this.players.map(p => {
+        // 1) 找出完成 4 張的動物種類
+        const completedAnimals: Animal[] = (Object.keys(p.animals) as Animal[])
+          .filter(a => (p.animals[a] ?? 0) >= setSize);
+
+        // 2) 底和＝只對「完成組」的動物加總分值
+        const baseSum = completedAnimals.reduce((sum, a) => sum + scoreOf(a), 0);
+
+        // 3) 組數＝完成組的種類數
+        const completedSets = completedAnimals.length;
+
+        // 4) 最終分數
+        const total = baseSum * completedSets;
+
+        return { playerId: p.id, score: total };
       });
-      // 若需要可排序；此處保持原順序即可
-      return scores;
+
+      // 高分在前（可選）
+      results.sort((a, b) => b.score - a.score);
+      return results;
     },
 
     /**
