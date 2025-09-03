@@ -1,6 +1,12 @@
 // src/composables/useRealtimeGame.ts
 import { ref, type Ref, onMounted, onBeforeUnmount } from 'vue';
-import { Msg, type MsgType, type Envelope, type PayloadByType, envelope as makeEnvelope } from '@/networking/protocol';
+import {
+  Msg,
+  type MsgType,
+  type Envelope,
+  type PayloadByType,
+  envelope as makeEnvelope
+} from '@/networking/protocol';
 import type { GameState } from '@/types/game';
 import type { IBroadcast, PresenceMember } from '@/services/broadcast';
 import { getHostId } from '@/services/host-election';
@@ -8,7 +14,7 @@ import { createDedupBuffer } from '@/services/dedup-buffer';
 import { newId } from '@/utils/id';
 import { useGameStore } from '@/store/game';
 import { useAuctionStore } from '@/store/auction';
-// Cow Trade 的 reducers 於 Phase 4 才會接線；此檔先預留 import：
+// Phase 4 再接 Cow Trade reducers：
 // import { useCowStore } from '@/store/cow';
 
 export interface RealtimeIdentity {
@@ -25,7 +31,7 @@ export interface UseRealtimeGame {
 
 const STATE_PERSIST_PREFIX = 'game:';
 
-// 型別守門：簡易驗證外部送來的 payload 至少具備必要欄位
+// ---- 型別守門：驗證 Envelope 形狀（零 any） ----
 function isEnvelopeOfType<T extends MsgType>(input: unknown, expected: T): input is Envelope<T> {
   if (typeof input !== 'object' || input === null) return false;
   const obj = input as Record<string, unknown>;
@@ -40,7 +46,7 @@ function isEnvelopeOfType<T extends MsgType>(input: unknown, expected: T): input
   );
 }
 
-// 從 presence members 取出所有 playerId（以 member.id 為準；若底層不同，adapter 需確保一致）
+// presence → 取 playerId（adapter 需保證 member.id === playerId）
 function memberIds(members: PresenceMember[]): string[] {
   return members.map((m) => m.id);
 }
@@ -60,8 +66,9 @@ export function useRealtimeGame(
 
   let bus: IBroadcast | null = null;
   let destroyed = false;
+  let hostPollTimer: number | null = null;
 
-  // —— 工具：persist / restore（Host 端使用） ——
+  // —— 工具：persist（Host 端） ——
   function persistHostSnapshot(state: GameState): void {
     try {
       localStorage.setItem(`${STATE_PERSIST_PREFIX}${roomId}`, JSON.stringify(state));
@@ -73,7 +80,16 @@ export function useRealtimeGame(
   // —— Host：廣播完整快照 ——
   async function broadcastStateUpdate(): Promise<void> {
     const snapshot: GameState = game.serializeForPersist();
-    const env = makeEnvelope(Msg.State.Update, roomId, me.playerId, { state: snapshot }, { stateVersion: snapshot.stateVersion });
+    // Log
+    // eslint-disable-next-line no-console
+    console.log('[NET] broadcast state.update', { stateVersion: snapshot.stateVersion });
+    const env = makeEnvelope(
+      Msg.State.Update,
+      roomId,
+      me.playerId,
+      { state: snapshot },
+      { stateVersion: snapshot.stateVersion }
+    );
     await bus!.publish<Envelope<typeof Msg.State.Update>>(Msg.State.Update, env);
     persistHostSnapshot(snapshot);
   }
@@ -84,24 +100,40 @@ export function useRealtimeGame(
     env: Envelope<T>
   ): Promise<void> {
     // 去重：所有 action.* 必帶 actionId
-    if (!env.actionId) return;
+    if (!env.actionId) {
+      // eslint-disable-next-line no-console
+      console.log('[NET] drop action (missing actionId)', { type, from: env.senderId });
+      return;
+    }
     const isNew = dedup.add(env.actionId);
-    if (!isNew) return;
+    if (!isNew) {
+      // eslint-disable-next-line no-console
+      console.log('[NET] drop duplicate action', { type, actionId: env.actionId });
+      return;
+    }
 
     // 僅處理本房間
-    if (env.roomId !== roomId) return;
+    if (env.roomId !== roomId) {
+      // eslint-disable-next-line no-console
+      console.log('[NET] drop action (wrong room)', { type, envRoom: env.roomId, roomId });
+      return;
+    }
+
+    // eslint-disable-next-line no-console
+    console.log('[NET] host handle action', { type, from: env.senderId, actionId: env.actionId });
 
     // reducers：依 SSoT 事件對應表
     switch (type) {
       case Msg.Action.ChooseAuction: {
-        // 抽牌進入拍賣
         game.drawCardForAuction();
         auction.enterBidding();
         break;
       }
       case Msg.Action.PlaceBid: {
         const p = env.payload as PayloadByType[typeof Msg.Action.PlaceBid];
-        auction.placeBid(p.playerId, p.moneyCardIds, env.actionId);
+        // **** 修正：placeBid 需要 ts（Host 接收時間）****
+        const hostTs = Date.now();
+        auction.placeBid(p.playerId, p.moneyCardIds, env.actionId, hostTs);
         break;
       }
       case Msg.Action.PassBid: {
@@ -110,19 +142,20 @@ export function useRealtimeGame(
         break;
       }
       case Msg.Action.HostAward: {
-        // 直接進結算（award）
         auction.settle('award');
         break;
       }
-      // Phase 3：HostBuyback 在下一階段完成
-      // Phase 4：Cow Trade 相關在下一階段接上
+      // Phase 3：HostBuyback 會接上
+      // Phase 4：Cow Trade 會接上
       default:
-        // 未支援的 action 於當前 Phase 忽略
+        // 當前 Phase 未支援的 action 忽略
         break;
     }
 
     // 版本遞增與廣播快照
     game.bumpVersion();
+    // eslint-disable-next-line no-console
+    console.log('[NET] state bumped', { nextStateVersion: game.stateVersion });
     await broadcastStateUpdate();
   }
 
@@ -131,17 +164,25 @@ export function useRealtimeGame(
     _type: T,
     env: Envelope<T>
   ): Promise<void> {
-    // 僅 Host 回應，且同房間才回
     if (!isHost.value || env.roomId !== roomId) return;
+    // eslint-disable-next-line no-console
+    console.log('[NET] recv requestState', { from: env.senderId });
     await broadcastStateUpdate();
   }
 
   // —— Client/Host：套用 state.update ——（丟棄舊版本）
   function applyStateUpdate<T extends keyof PayloadByType>(env: Envelope<T>): void {
-    const p = env.payload as PayloadByType[typeof Msg.State.Update];
-    const incoming = (p as { state: GameState }).state;
+    const payload = env.payload as PayloadByType[typeof Msg.State.Update];
+    const incoming = (payload as { state: GameState }).state;
+    // eslint-disable-next-line no-console
+    console.log('[NET] recv state.update', {
+      incoming: incoming.stateVersion,
+      local: game.stateVersion
+    });
     if (incoming.stateVersion <= game.stateVersion) {
-      return; // 舊包丟棄
+      // eslint-disable-next-line no-console
+      console.log('[NET] drop stale state.update', { reason: 'older-or-equal' });
+      return;
     }
     game.applySnapshot(incoming);
   }
@@ -153,13 +194,26 @@ export function useRealtimeGame(
     const newHostId = getHostId(ids.map((id) => ({ id })));
     const nowHost = newHostId === me.playerId;
 
-    const previouslyHost = isHost.value;
+    const wasHost = isHost.value;
     isHost.value = nowHost;
 
+    // eslint-disable-next-line no-console
+    console.log('[NET] host check', { wasHost, nowHost, newHostId, members: ids });
+
     // 若剛成為 Host，立即廣播 hostChanged 與最新快照
-    if (!previouslyHost && nowHost) {
-      const hostChanged = makeEnvelope(Msg.System.HostChanged, roomId, me.playerId, { newHostId: me.playerId });
-      await bus.publish<Envelope<typeof Msg.System.HostChanged>>(Msg.System.HostChanged, hostChanged);
+    if (!wasHost && nowHost) {
+      // eslint-disable-next-line no-console
+      console.log('[NET] assume host', { me: me.playerId });
+      const hostChanged = makeEnvelope(
+        Msg.System.HostChanged,
+        roomId,
+        me.playerId,
+        { newHostId: me.playerId }
+      );
+      await bus.publish<Envelope<typeof Msg.System.HostChanged>>(
+        Msg.System.HostChanged,
+        hostChanged
+      );
       await broadcastStateUpdate();
     }
   }
@@ -169,10 +223,16 @@ export function useRealtimeGame(
     if (destroyed) return;
     if (bus) return;
 
+    // eslint-disable-next-line no-console
+    console.log('[NET] connect start', { roomId, me });
+
     bus = busFactory(roomId);
 
     // presence 進房
     await bus.presence().enter({ playerId: me.playerId, name: me.name });
+    const afterEnter = await bus.presence().getMembers();
+    // eslint-disable-next-line no-console
+    console.log('[NET] presence after enter', { members: afterEnter.map((m) => m.id) });
 
     // 計算是否為 Host
     await recomputeHostAndMaybeAssume();
@@ -183,11 +243,16 @@ export function useRealtimeGame(
       const off = bus.subscribe<unknown>(t, async (payload: unknown) => {
         if (!isEnvelopeOfType(payload, t)) return;
         const env = payload as Envelope<typeof t>;
+        // eslint-disable-next-line no-console
+        console.log('[NET] recv action', {
+          type: env.type,
+          from: env.senderId,
+          actionId: env.actionId
+        });
         // 僅 Host 執行 reducers；非 Host 忽略
         if (isHost.value) {
           await handleActionAsHost(t, env);
         }
-        // 收到任何訊息時嘗試重新評估 Host（保險策略）
         void recomputeHostAndMaybeAssume();
       });
       unsubscribers.push(off);
@@ -208,7 +273,10 @@ export function useRealtimeGame(
       const off = bus.subscribe<unknown>(Msg.System.RequestState, async (payload: unknown) => {
         if (!isEnvelopeOfType(payload, Msg.System.RequestState)) return;
         if (isHost.value) {
-          await handleRequestState(Msg.System.RequestState, payload as Envelope<typeof Msg.System.RequestState>);
+          await handleRequestState(
+            Msg.System.RequestState,
+            payload as Envelope<typeof Msg.System.RequestState>
+          );
         }
         void recomputeHostAndMaybeAssume();
       });
@@ -217,21 +285,50 @@ export function useRealtimeGame(
 
     // 訂閱 system.hostChanged（更新 Host 狀態）
     {
-      const off = bus.subscribe<unknown>(Msg.System.HostChanged, async () => {
+      const off = bus.subscribe<unknown>(Msg.System.HostChanged, async (payload: unknown) => {
+        if (!isEnvelopeOfType(payload, Msg.System.HostChanged)) return;
+        const env = payload as Envelope<typeof Msg.System.HostChanged>;
+        // eslint-disable-next-line no-console
+        console.log('[NET] recv hostChanged', { newHostId: env.payload.newHostId });
         await recomputeHostAndMaybeAssume();
       });
       unsubscribers.push(off);
     }
 
+    // 加上保底輪詢（每秒）避免漏掉 presence 事件
+    if (hostPollTimer === null) {
+      hostPollTimer = window.setInterval(() => {
+        void recomputeHostAndMaybeAssume();
+      }, 1000) as unknown as number;
+      unsubscribers.push(() => {
+        if (hostPollTimer !== null) {
+          window.clearInterval(hostPollTimer);
+          hostPollTimer = null;
+        }
+      });
+    }
+
     // 非 Host 主動請求一次快照
     if (!isHost.value) {
-      const req = makeEnvelope(Msg.System.RequestState, roomId, me.playerId, { requesterId: me.playerId });
+      const req = makeEnvelope(
+        Msg.System.RequestState,
+        roomId,
+        me.playerId,
+        { requesterId: me.playerId }
+      );
+      // eslint-disable-next-line no-console
+      console.log('[NET] send requestState', { to: 'host?' });
       await bus.publish<Envelope<typeof Msg.System.RequestState>>(Msg.System.RequestState, req);
     }
+
+    // eslint-disable-next-line no-console
+    console.log('[NET] connect done', { isHost: isHost.value });
   }
 
   async function disconnect(): Promise<void> {
     if (!bus) return;
+    // eslint-disable-next-line no-console
+    console.log('[NET] disconnect');
     try {
       for (const off of unsubscribers.splice(0, unsubscribers.length)) {
         try {
@@ -239,6 +336,10 @@ export function useRealtimeGame(
         } catch {
           // ignore
         }
+      }
+      if (hostPollTimer !== null) {
+        window.clearInterval(hostPollTimer);
+        hostPollTimer = null;
       }
       await bus.presence().leave();
     } finally {
@@ -251,27 +352,31 @@ export function useRealtimeGame(
   async function dispatch<T extends MsgType>(type: T, payload: PayloadByType[T]): Promise<void> {
     if (!bus) throw new Error('Realtime bus is not connected');
 
-    // 僅允許透過 dispatch 送 Action（System 訊息由內部送）
-    const isAction =
-      (Object.values(Msg.Action) as string[]).includes(type as unknown as string);
+    const isAction = (Object.values(Msg.Action) as readonly string[]).includes(type as string);
 
     if (!isAction) {
-      // 允許內部使用，但若外部嘗試送非 action，直接忽略
+      // 非 action.* 外部不允許送；system/state 由內部處理
+      // eslint-disable-next-line no-console
+      console.log('[NET] ignore non-action dispatch', { type });
       return;
     }
 
+    const env = makeEnvelope(type, roomId, me.playerId, payload, { actionId: newId() });
+
     if (isHost.value) {
-      // Host 直接 reducer → 廣播快照
-      const env = makeEnvelope(type, roomId, me.playerId, payload, { actionId: newId() });
+      // Host：直接執行 reducers → 廣播快照
+      // eslint-disable-next-line no-console
+      console.log('[NET] local action (host)', { type, actionId: env.actionId });
       await handleActionAsHost(type, env);
     } else {
-      // 非 Host 封包後送給 Host
-      const env = makeEnvelope(type, roomId, me.playerId, payload, { actionId: newId() });
+      // Guest：送給 Host
+      // eslint-disable-next-line no-console
+      console.log('[NET] publish action (guest)', { type, actionId: env.actionId });
       await bus.publish<Envelope<T>>(type, env);
     }
   }
 
-  // —— 自動掛載／卸載（供 App.vue 也能手動呼叫 connect/discount） —— //
+  // 自動掛載／卸載（可改由外部控制）
   onMounted(() => {
     // 可由外部手動呼叫 connect；此處不強制自動連線
   });
