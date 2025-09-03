@@ -134,7 +134,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, onMounted, onBeforeUnmount, ref } from 'vue';
+import { computed, reactive, onMounted, onBeforeUnmount } from 'vue';
 import Hud from '@/components/Hud.vue';
 import TurnChoice from '@/components/TurnChoice.vue';
 import AuctionBidderView from '@/components/Auction/AuctionBidderView.vue';
