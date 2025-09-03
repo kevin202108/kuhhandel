@@ -1,5 +1,5 @@
 <template>
-  <div class="bidder">
+  <div class="bidder" :class="{ 'is-passed': hasPassed }">
     <header class="header">
       <h3 class="title">投標者視圖</h3>
       <div class="highest" v-if="highest">
@@ -8,6 +8,9 @@
         <small class="desc">（先到先贏）</small>
       </div>
       <div class="highest none" v-else>目前尚無出價</div>
+
+      <!-- 顯眼提示：已放棄 -->
+      <div v-if="hasPassed" class="banner-passed">你已放棄本輪出價</div>
     </header>
 
     <section class="pad">
@@ -26,13 +29,23 @@
       </div>
 
       <div class="actions">
-        <button class="secondary" @click="onClear" :disabled="selectedIds.length === 0">
+        <button class="secondary" @click="onClear" :disabled="selectedIds.length === 0 || hasPassed">
           清空
         </button>
         <button class="primary" :disabled="!canConfirm" @click="confirmNow">
           確認出價（{{ total }}）
         </button>
-        <button class="ghost" @click="emit('pass')">放棄出價</button>
+        <button
+          class="ghost pass-btn"
+          :class="{ passed: hasPassed }"
+          :disabled="hasPassed"
+          :aria-pressed="hasPassed ? 'true' : 'false'"
+          title="放棄後本輪不可再出價"
+          @click="onPass"
+        >
+          <span v-if="!hasPassed">放棄出價</span>
+          <span v-else>已放棄</span>
+        </button>
       </div>
     </footer>
   </div>
@@ -56,26 +69,31 @@ const emit = defineEmits<{
 // 本地暫存選擇（送出前不動真資產）
 const selectedIds = ref<string[]>([]);
 
+// 是否已放棄（本地狀態；父層開始新一輪拍賣時，建議給此元件一個新的 :key 來重置）
+const hasPassed = ref(false);
+
 const total = computed(() =>
   selectedIds.value
     .map((id) => props.self.moneyCards.find((c) => c.id === id)?.value ?? 0)
-    .reduce<number>((a, b) => a + b, 0)
+    .reduce<number>((a, b) => a + (b ?? 0), 0)
 );
 
-const canConfirm = computed(() => total.value > 0);
+// 放棄後禁用出價
+const canConfirm = computed(() => total.value > 0 && !hasPassed.value);
 
 function onToggle(id: string) {
+  if (hasPassed.value) return; // 放棄後忽略互動
   const i = selectedIds.value.indexOf(id);
   if (i >= 0) selectedIds.value.splice(i, 1);
   else selectedIds.value.push(id);
 }
 
 function onClear() {
+  if (hasPassed.value) return;
   selectedIds.value = [];
 }
 
 function onConfirm(ids: string[]) {
-  // 從 MoneyPad 直接按下「確認」
   if (!canConfirm.value) return;
   emit('place-bid', ids);
   selectedIds.value = [];
@@ -85,6 +103,12 @@ function confirmNow() {
   if (!canConfirm.value) return;
   emit('place-bid', selectedIds.value.slice());
   selectedIds.value = [];
+}
+
+function onPass() {
+  hasPassed.value = true;     // 立刻反映樣式與禁用
+  selectedIds.value = [];     // 清掉暫存
+  emit('pass');               // 通知父層 / store
 }
 </script>
 
@@ -138,6 +162,8 @@ function confirmNow() {
   grid-auto-flow: column;
   gap: 8px;
 }
+
+/* Buttons */
 button.primary,
 button.secondary,
 button.ghost {
@@ -146,7 +172,7 @@ button.ghost {
   padding: 8px 12px;
   font-weight: 700;
   cursor: pointer;
-  transition: transform 0.05s ease, opacity 0.2s ease, box-shadow 0.15s ease;
+  transition: transform 0.05s ease, opacity 0.2s ease, box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   border: 1px solid transparent;
 }
 button.primary {
@@ -172,5 +198,33 @@ button.ghost {
 }
 button:not(:disabled):active {
   transform: translateY(1px);
+}
+
+/* 放棄後的視覺狀態（顯眼） */
+.pass-btn.passed {
+  background: #fee2e2;       /* 紅色淡底 */
+  border-color: #fecaca;
+  color: #991b1b;
+  cursor: not-allowed;
+}
+.pass-btn.passed:disabled {
+  opacity: 1;               /* 保持高對比，不要淡掉 */
+}
+
+/* 額外在頂部提示 */
+.banner-passed {
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+/* 整卡片淡化但仍可閱讀（可選） */
+.is-passed .pad {
+  opacity: 0.7;
 }
 </style>
