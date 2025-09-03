@@ -116,7 +116,7 @@ type Unsub = () => void;
 
 export function createMemoryBroadcast(): IBroadcast {
   const subs = new Map<string, Array<(payload: unknown) => void>>();
-  let members: PresenceMember[] = [];
+  const members: PresenceMember[] = [];
 
   const publishSync = (topic: string, payload: unknown): void => {
     const list = subs.get(topic);
