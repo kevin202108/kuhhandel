@@ -19,3 +19,6 @@ pnpm-debug.log*
 
 # TS build info
 /node_modules/.cache/
+
+# dotenv environment variables files
+.env
