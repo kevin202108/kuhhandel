@@ -121,6 +121,11 @@
     <section v-else class="view">
       <p>未知的階段：{{ phase }}</p>
     </section>
+
+    <div class="panel">
+      <button class="secondary" @click="endNowForDev">Dev：直接結束並計分</button>
+    </div>
+
   </div>
 </template>
 
@@ -243,6 +248,13 @@ function resetToSetup() {
   // 簡單作法：重新整個頁面或提供 game.reset()（若你有實作 reset 可改用）
   window.location.reload();
 }
+
+function endNowForDev() {
+  // 僅開發用：不改規則，只是把結果顯示出來
+  game.computeFinalScores(); // 若你的實作需要先計算可先存到 store
+  game.phase = 'game.end' as any;
+}
+
 </script>
 
 <style scoped>
