@@ -6,33 +6,38 @@ import type {
   Bid,
   GameState,
   MoneyCard,
-  Player
+  Player,
+  Phase
 } from '@/types/game';
 
 /**
- * Auction Store（Phase 1：單機 MVP）
- * - enterBidding(): 抽牌並進入 auction.bidding
- * - placeBid(): 只保留最高價；平手比 ts（先到先贏）
- * - passBid(): 更新 passes:string[]；「除了最高出價者與主持人外」皆 pass 後 → auction.closing
- * - hostAward(): 主持人結標給最高出價者（或無人出價 → 主持人直接拿）
+ * Auction Store（Phase 2：純 reducers / Host 專用）
+ * - 僅負責更新本地狀態，不進行網路廣播、Host 判定或副作用
+ * - Host 在收到 action 時先驗證，再呼叫這些 reducers，最後由 Host 廣播完整快照
+ *
+ * 提要
+ * - enterBidding(): 抽牌並進入 'auction.bidding'
+ * - placeBid(playerId, moneyCardIds, actionId, ts): 只保留最高；平手比 ts（先到先贏）
+ * - passBid(playerId): 更新 passes；「除了最高出價者與主持人外」皆 pass → 進 'auction.closing'
+ * - hostAward(): 主持人結標（Phase 2 僅支援 award）
  * - settle('award'): 一次性轉移資產，phase='turn.end'
  *
- * 注意：
- * - 本檔不處理網路廣播/Host；僅單機邏輯。
- * - `passes` 使用 string[]（可序列化）。
+ * 規範
+ * - `passes` 使用 string[]（可序列化）
+ * - `ts` 由 Host 在收 action 當下決定並傳入（本檔不呼叫 Date.now）
+ * - 僅在合法 phase 執行；否則直接 return（不 throw），由上層 Host 流程決定是否記錄錯誤
  */
 
 function uniq<T>(arr: T[]): T[] {
   return Array.from(new Set(arr));
 }
-function now() {
-  return Date.now();
-}
+
 function getPlayerById(game: GameState, id: string): Player {
   const p = game.players.find((x) => x.id === id);
   if (!p) throw new Error(`Player not found: ${id}`);
   return p;
 }
+
 function moneyTotalOf(player: Player, moneyCardIds: string[]): number {
   const want = uniq(moneyCardIds);
   const ownedIds = new Set(player.moneyCards.map((m) => m.id));
@@ -44,6 +49,7 @@ function moneyTotalOf(player: Player, moneyCardIds: string[]): number {
   for (const id of want) total += byId.get(id)!.value;
   return total;
 }
+
 /** 有錢的非主持人（沒錢者不需要按 pass） */
 function eligibleNonHostIdsForBidding(game: GameState, auctioneerId: string): string[] {
   return game.players
@@ -57,8 +63,8 @@ export const useAuctionStore = defineStore('auction', {
   }),
 
   getters: {
-    // Phase 1 未實作買回；此 getter 保留介面位置（永遠 false）
-    canAuctioneerBuyback: (state) => {
+    // Phase 2 仍未實作買回；此 getter 保留介面位置（永遠 false）
+    canAuctioneerBuyback: (state): boolean => {
       void state;
       return false;
     }
@@ -71,7 +77,7 @@ export const useAuctionStore = defineStore('auction', {
      * - 若存在最高出價者 highest → 將其自 eligible 排除
      * - 若剩餘所有人都已在 passes → 進入 auction.closing
      */
-    maybeEnterClosing() {
+    maybeEnterClosing(): void {
       const game = useGameStore();
       const a = this.auction;
       if (!a || game.phase !== 'auction.bidding') return;
@@ -97,7 +103,7 @@ export const useAuctionStore = defineStore('auction', {
      * 進入拍賣流程：抽一張牌，建立 AuctionState，phase='auction.bidding'
      * 若場上除主持人外皆無錢，直接進入 'auction.closing'
      */
-    enterBidding() {
+    enterBidding(): void {
       const game = useGameStore();
       if (game.phase !== 'turn.choice') return;
 
@@ -127,11 +133,17 @@ export const useAuctionStore = defineStore('auction', {
     },
 
     /**
-     * 出價：只保留最高；同額則以 ts 先到先贏（不覆蓋既有最高）
-     * 不會立即轉移資產，直到 settle('award')
-     * ※ 出價後若「除了最新最高者與主持人外」其餘皆已放棄，則自動進入結標
+     * 出價（Host 專用）：
+     * - 只保留最高；同額則以 ts 先到先贏（不覆蓋既有最高）
+     * - 不會立即轉移資產，直到 settle('award')
+     * - 出價後若「除了最新最高者與主持人外」其餘皆已放棄，則自動進入結標
+     *
+     * @param playerId 出價者
+     * @param moneyCardIds 使用的錢卡 id 列表（去重後計算）
+     * @param actionId 這次 action 的唯一 id（去重用）
+     * @param ts Host 收到此 action 的時間戳（毫秒），供「平手先到先贏」
      */
-    placeBid(playerId: string, moneyCardIds: string[], actionId: string) {
+    placeBid(playerId: string, moneyCardIds: string[], actionId: string, ts: number): void {
       const game = useGameStore();
       if (game.phase !== 'auction.bidding' || !this.auction) return;
 
@@ -145,7 +157,7 @@ export const useAuctionStore = defineStore('auction', {
         playerId,
         moneyCardIds: uniq(moneyCardIds),
         total,
-        ts: now(),
+        ts,
         actionId
       };
 
@@ -169,7 +181,7 @@ export const useAuctionStore = defineStore('auction', {
      * 放棄出價：加入 passes
      * - 「除了目前最高出價者與主持人外」其餘皆 pass 後 → 進入 auction.closing
      */
-    passBid(playerId: string) {
+    passBid(playerId: string): void {
       const game = useGameStore();
       if (!this.auction || game.phase !== 'auction.bidding') return;
 
@@ -190,12 +202,11 @@ export const useAuctionStore = defineStore('auction', {
     },
 
     /**
-     * 主持人結標（Phase 1 僅支援 award）
-     * - 若有最高出價者：將牌給得標者，款項轉給主持人
-     * - 若無人出價：主持人免費獲得該牌
-     * 最終呼叫 settle('award')
+     * 主持人結標（Phase 2 僅支援 award）
+     * - 僅允許在 'auction.closing' 執行
+     * - 最終呼叫 settle('award')
      */
-    hostAward() {
+    hostAward(): void {
       const game = useGameStore();
       if (!this.auction || (game.phase !== 'auction.closing' && game.phase !== 'auction.bidding'))
         return;
@@ -208,15 +219,15 @@ export const useAuctionStore = defineStore('auction', {
     },
 
     /**
-     * 結算（Phase 1 僅 'award'）
+     * 結算（Phase 2 僅 'award'）
      * - 一次性轉移資產（錢卡 / 動物卡），寫入 log
      * - phase='turn.end'，清空 auction 狀態
      */
-    settle(mode: 'award' | 'buyback') {
+    settle(mode: 'award' | 'buyback'): void {
       const game = useGameStore();
       if (!this.auction) return;
       if (mode !== 'award') {
-        // Phase 1 不支援買回；預留介面但不執行
+        // Phase 2 不支援買回；保留介面但不執行
         return;
       }
 
@@ -255,7 +266,7 @@ export const useAuctionStore = defineStore('auction', {
       }
 
       // 清理與收尾
-      game.phase = 'turn.end';
+      game.phase = 'turn.end' as Phase;
       this.auction = null;
     }
   }
