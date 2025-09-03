@@ -1,142 +1,249 @@
-// services/broadcast.ts
-// In-memory message bus for dev/local testing.
-// - Channel-scoped (one instance per room/channelName)
-// - Topic-based publish/subscribe within a channel
-// - Presence list per channel (id === playerId, as required)
-//
-// NOTE: This is an in-memory transport. It does NOT cross browser tabs or processes.
+// src/services/broadcast.ts
+/**
+ * IBroadcast 抽象層 + Ably Adapter + Memory Adapter（測試用）
+ * - 嚴格使用 unknown（不使用 any）
+ * - 以型別守門縮小 unknown，避免 TS2339
+ */
+
+///////////////////////////////
+// Public Interface
+///////////////////////////////
 
 export interface IBroadcast {
   publish<T>(topic: string, payload: T): Promise<void>;
   subscribe<T>(topic: string, handler: (payload: T) => void): () => void;
   presence(): {
-    // presence clientId MUST equal playerId (enforced by storing playerId as id)
     enter(meta: { playerId: string; name: string }): Promise<void>;
     leave(): Promise<void>;
-    getMembers(): Promise<
-      Array<{ id: string; data: { playerId: string; name: string } }>
-    >;
+    getMembers(): Promise<Array<{ id: string; data: { playerId: string; name: string } }>>;
   };
 }
 
-type TopicHandler<T = any> = (payload: T) => void;
+///////////////////////////////
+// Minimal Ably-Like Channel Types (decoupled from SDK)
+///////////////////////////////
 
-type PresenceMeta = { playerId: string; name: string };
+type AblyMessage = { name?: string; data: unknown };
+type AblyListener = (msg: AblyMessage) => void;
 
-interface ChannelState {
-  subs: Map<string, Set<TopicHandler>>;
-  members: Map<string, PresenceMeta>;
-}
+type AblyPresenceMember = {
+  id: string;
+  clientId?: string;
+  data?: unknown;
+};
 
-const __registry = new Map<string, ChannelState>();
+type AblyPresence = {
+  enter: (data: unknown) => Promise<void> | void;
+  leave: () => Promise<void> | void;
+  get: () => Promise<AblyPresenceMember[]> | AblyPresenceMember[];
+};
 
-function getOrCreateChannel(name: string): ChannelState {
-  let ch = __registry.get(name);
-  if (!ch) {
-    ch = { subs: new Map(), members: new Map() };
-    __registry.set(name, ch);
-  }
-  return ch;
-}
+export type AblyChannel = {
+  publish: (name: string, data: unknown) => Promise<void> | void;
+  subscribe: ((listener: AblyListener) => void) & ((name: string, listener: AblyListener) => void);
+  unsubscribe: ((listener?: AblyListener) => void) & ((name: string, listener?: AblyListener) => void);
+  presence: AblyPresence;
+};
 
-function delay(ms: number): Promise<void> {
-  return ms > 0 ? new Promise((r) => setTimeout(r, ms)) : Promise.resolve();
-}
+///////////////////////////////
+// Ably Adapter → IBroadcast
+///////////////////////////////
 
-/**
- * Create an in-memory broadcast bound to a channel (e.g. "game-ROOM123").
- * @param channelName Unique channel identifier (per room)
- * @param opts Optional latency simulation
- */
-export function createMemoryBroadcast(
-  channelName: string,
-  opts?: { latencyMs?: number }
-): IBroadcast {
-  const channel = getOrCreateChannel(channelName);
-  const latency = Math.max(0, opts?.latencyMs ?? 0);
-
-  // Track the "local" presence for this instance so leave() knows whom to remove.
-  let currentClientId: string | null = null;
-
+export function createAblyBroadcast(channel: AblyChannel): IBroadcast {
   return {
     async publish<T>(topic: string, payload: T): Promise<void> {
-      // Simulate network latency then fan-out to current subscribers snapshot.
-      await delay(latency);
-      const handlers = channel.subs.get(topic);
-      if (!handlers || handlers.size === 0) return;
-
-      // Copy before iterating to avoid mutation issues during delivery.
-      const snapshot = Array.from(handlers);
-      for (const fn of snapshot) {
-        try {
-          fn(payload as any);
-        } catch (err) {
-          // Isolate listener errors; log so devs can see issues during local runs.
-          // eslint-disable-next-line no-console
-          console.error('[broadcast] handler error on topic', topic, err);
-        }
+      try {
+        await Promise.resolve(channel.publish(topic, payload as unknown));
+      } catch (err) {
+        console.error('[broadcast] publish failed:', topic, err);
+        throw err;
       }
     },
 
     subscribe<T>(topic: string, handler: (payload: T) => void): () => void {
-      const set = channel.subs.get(topic) ?? new Set<TopicHandler>();
-      set.add(handler as TopicHandler);
-      channel.subs.set(topic, set);
-
-      let unsubbed = false;
-      return () => {
-        if (unsubbed) return;
-        unsubbed = true;
-        const s = channel.subs.get(topic);
-        if (!s) return;
-        s.delete(handler as TopicHandler);
-        if (s.size === 0) channel.subs.delete(topic);
+      const listener: AblyListener = (msg) => {
+        try {
+          // 呼叫端自己決定 T；這裡僅轉型，不做 runtime schema 驗證
+          handler(msg.data as T);
+        } catch (err) {
+          console.error('[broadcast] subscriber handler error:', err);
+        }
       };
+
+      try {
+        if (topic === '*') {
+          channel.subscribe(listener);
+          return () => channel.unsubscribe(listener);
+        } else {
+          channel.subscribe(topic, listener);
+          return () => channel.unsubscribe(topic, listener);
+        }
+      } catch (err) {
+        console.error('[broadcast] subscribe failed:', topic, err);
+        return () => {};
+      }
     },
 
     presence() {
       return {
         async enter(meta: { playerId: string; name: string }): Promise<void> {
-          if (!meta || !meta.playerId) {
-            throw new Error('presence.enter requires { playerId, name }');
+          try {
+            await Promise.resolve(channel.presence.enter({ playerId: meta.playerId, name: meta.name }));
+          } catch (err) {
+            console.error('[broadcast.presence] enter failed:', err);
+            throw err;
           }
-          currentClientId = meta.playerId;
-          // Enforce presence id === playerId
-          channel.members.set(meta.playerId, {
-            playerId: meta.playerId,
-            name: meta.name,
-          });
-          await delay(latency);
         },
 
         async leave(): Promise<void> {
-          if (currentClientId) {
-            channel.members.delete(currentClientId);
-            currentClientId = null;
+          try {
+            await Promise.resolve(channel.presence.leave());
+          } catch (err) {
+            console.error('[broadcast.presence] leave failed:', err);
           }
-          await delay(latency);
         },
 
-        async getMembers(): Promise<
-          Array<{ id: string; data: { playerId: string; name: string } }>
-        > {
-          await delay(latency);
-          // Return deterministic order (lexicographic by id) to help tests/host-election.
-          const list = Array.from(channel.members.values()).map((m) => ({
-            id: m.playerId,
-            data: { playerId: m.playerId, name: m.name },
-          }));
-          list.sort((a, b) => a.id.localeCompare(b.id));
-          return list;
+        async getMembers(): Promise<Array<{ id: string; data: { playerId: string; name: string } }>> {
+          try {
+            const raw = await Promise.resolve(channel.presence.get());
+            return raw.map(normalizePresenceMember);
+          } catch (err) {
+            console.error('[broadcast.presence] getMembers failed:', err);
+            return [];
+          }
         },
       };
     },
   };
 }
 
-/**
- * Test helper: clear all channels/state. Useful between test cases.
- */
-export function __resetMemoryBroadcast(): void {
-  __registry.clear();
+///////////////////////////////
+// Presence normalize with unknown-safe narrowing
+///////////////////////////////
+
+function normalizePresenceMember(
+  m: AblyPresenceMember
+): { id: string; data: { playerId: string; name: string } } {
+  const id = toStringSafe(m.clientId ?? m.id ?? '');
+  const meta = isObject(m.data) ? (m.data as Record<string, unknown>) : emptyRecord;
+
+  const playerId = toStringSafe((meta['playerId'] as unknown) ?? m.clientId ?? m.id ?? '');
+  const name = toStringSafe(meta['name']);
+
+  if (!id || !playerId) {
+    console.warn('[broadcast.presence] member missing id/playerId; raw:', m);
+  }
+  return { id: id || playerId, data: { playerId: playerId || id, name } };
+}
+
+const emptyRecord: Record<string, unknown> = Object.freeze({});
+
+function isObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null;
+}
+
+function toStringSafe(v: unknown): string {
+  if (typeof v === 'string') return v;
+  if (v == null) return '';
+  try {
+    return String(v);
+  } catch {
+    return '';
+  }
+}
+
+///////////////////////////////
+// Memory Adapter (tests / offline)
+///////////////////////////////
+
+export function createMemoryBroadcast(): IBroadcast {
+  type Handler = (payload: unknown) => void;
+
+  const topicMap = new Map<string, Set<Handler>>();
+  const starSet = new Set<Handler>();
+  let members: Array<{ id: string; data: { playerId: string; name: string } }> = [];
+
+  function add(topic: string, h: Handler) {
+    if (topic === '*') {
+      starSet.add(h);
+      return () => starSet.delete(h);
+    }
+    let set = topicMap.get(topic);
+    if (!set) {
+      set = new Set<Handler>();
+      topicMap.set(topic, set);
+    }
+    set.add(h);
+    return () => {
+      set!.delete(h);
+      if (set!.size === 0) topicMap.delete(topic);
+    };
+  }
+
+  async function publish(topic: string, payload: unknown): Promise<void> {
+    const list = topicMap.get(topic);
+    if (list && list.size) {
+      for (const h of Array.from(list)) {
+        try {
+          h(payload);
+        } catch (err) {
+          console.error('[memory-broadcast] handler error:', err);
+        }
+      }
+    }
+    if (starSet.size) {
+      for (const h of Array.from(starSet)) {
+        try {
+          h(payload);
+        } catch (err) {
+          console.error('[memory-broadcast] * handler error:', err);
+        }
+      }
+    }
+  }
+
+  return {
+    publish,
+    subscribe<T>(topic: string, handler: (payload: T) => void): () => void {
+      return add(topic, ((p: unknown) => handler(p as T)) as Handler);
+    },
+    presence() {
+      return {
+        async enter(meta: { playerId: string; name: string }): Promise<void> {
+          const id = meta.playerId;
+          const exists = members.some((m) => m.id === id);
+          if (!exists) {
+            members.push({ id, data: { playerId: meta.playerId, name: meta.name } });
+          } else {
+            members = members.map((m) =>
+              m.id === id ? { id, data: { playerId: meta.playerId, name: meta.name } } : m
+            );
+          }
+        },
+        async leave(): Promise<void> {
+          // 簡化：若需要可擴充 leave(playerId) 來準確移除
+        },
+        async getMembers(): Promise<Array<{ id: string; data: { playerId: string; name: string } }>> {
+          return members.slice();
+        },
+      };
+    },
+  };
+}
+
+///////////////////////////////
+// Optional helper
+///////////////////////////////
+
+export function assertClientIdMatchesPlayerId(
+  actualClientId: string | undefined,
+  expectedPlayerId: string | undefined
+) {
+  if (!expectedPlayerId) return;
+  if (actualClientId && actualClientId !== expectedPlayerId) {
+    console.warn(
+      `[broadcast] clientId (${actualClientId}) != playerId (${expectedPlayerId}). ` +
+        'Ensure Ably Realtime is created with clientId = playerId.'
+    );
+  }
 }
