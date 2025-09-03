@@ -24,7 +24,6 @@ export interface UseRealtimeGame {
 }
 
 const STATE_PERSIST_PREFIX = 'game:';
-const DEDUP_PERSIST_PREFIX = 'dedup:'; // 可選：若要抗 Host reload，可序列化保存
 
 // 型別守門：簡易驗證外部送來的 payload 至少具備必要欄位
 function isEnvelopeOfType<T extends MsgType>(input: unknown, expected: T): input is Envelope<T> {
