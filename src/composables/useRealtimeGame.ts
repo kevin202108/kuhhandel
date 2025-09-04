@@ -51,6 +51,11 @@ function memberIds(members: PresenceMember[]): string[] {
   return members.map((m) => m.id);
 }
 
+// 偵測 presence 名單中是否有重複 playerId（複製分頁常見）
+function hasDuplicateIds(ids: string[]): boolean {
+  return new Set(ids).size !== ids.length;
+}
+
 export function useRealtimeGame(
   roomId: string,
   me: RealtimeIdentity,
@@ -80,7 +85,6 @@ export function useRealtimeGame(
   // —— Host：廣播完整快照 ——
   async function broadcastStateUpdate(): Promise<void> {
     const snapshot: GameState = game.serializeForPersist();
-    // Log
     // eslint-disable-next-line no-console
     console.log('[NET] broadcast state.update', { stateVersion: snapshot.stateVersion });
     const env = makeEnvelope(
@@ -191,6 +195,13 @@ export function useRealtimeGame(
     if (!bus) return;
     const members = await bus.presence().getMembers();
     const ids = memberIds(members);
+
+    // NEW：偵測同房間出現重複 playerId（複製分頁）
+    if (hasDuplicateIds(ids)) {
+      // eslint-disable-next-line no-console
+      console.warn('[NET] duplicate playerId detected; two tabs may share the same id.', { ids });
+    }
+
     const newHostId = getHostId(ids.map((id) => ({ id })));
     const nowHost = newHostId === me.playerId;
 
@@ -215,6 +226,12 @@ export function useRealtimeGame(
         hostChanged
       );
       await broadcastStateUpdate();
+    }
+
+    // 可選：剛失去 Host 時提示
+    if (wasHost && !nowHost) {
+      // eslint-disable-next-line no-console
+      console.log('[NET] step down host', { me: me.playerId, newHostId });
     }
   }
 

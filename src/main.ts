@@ -13,7 +13,10 @@ import { createAblyBroadcast } from '@/services/broadcast';
 // --------------------
 // Injection keys (typed)
 // --------------------
-export interface RealtimeIdentity { playerId: string; name: string; }
+export interface RealtimeIdentity {
+  playerId: string;
+  name: string;
+}
 export type BusFactory = (roomId: string) => IBroadcast;
 
 export const RoomIdKey: InjectionKey<string> = Symbol('roomId');
@@ -23,81 +26,56 @@ export const BusFactoryKey: InjectionKey<BusFactory> = Symbol('busFactory');
 // --------------------
 // Env
 // --------------------
-const ABLY_API_KEY = (import.meta.env.VITE_ABLY_API_KEY ?? '') as string;
 const APP_NAME = (import.meta.env.VITE_APP_NAME ?? 'MyVueGame') as string;
-const ABLY_KEY = import.meta.env.VITE_ABLY_API_KEY as string | undefined;
-if (!ABLY_KEY) {
-  // 立即失敗，避免你以為有連線
+const ABLY_API_KEY = import.meta.env.VITE_ABLY_API_KEY as string | undefined;
+
+if (!ABLY_API_KEY) {
+  // 避免你以為有連線但其實沒設定 key
   throw new Error('Missing VITE_ABLY_API_KEY in .env');
 }
+
 // --------------------
 // Helpers (no any)
 // --------------------
-function generateRoomCode(): string {
-  // keep it URL-friendly; use nanoid/newId then trim
-  return newId().replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 8) || 'room';
+function sanitizeId(raw: string, fallback: string): string {
+  const s = raw.trim().replace(/[^a-zA-Z0-9_-]/g, '');
+  return s.length > 0 ? s : fallback;
 }
 
 function resolveRoomId(): string {
-  const fromQuery = new URLSearchParams(window.location.search).get('room');
-  if (fromQuery && /^[\w-]{3,64}$/.test(fromQuery)) return fromQuery;
-
-  const cached = localStorage.getItem('lastRoomId');
-  if (cached && /^[\w-]{3,64}$/.test(cached)) return cached;
-
-  const gen = generateRoomCode();
-  localStorage.setItem('lastRoomId', gen);
-  return gen;
+  const url = new URL(window.location.href);
+  const fromQuery = url.searchParams.get('room');
+  if (fromQuery) return sanitizeId(fromQuery, 'dev');
+  // 沒給就用固定 dev（方便你開多分頁同房測試）
+  return 'dev';
 }
 
-function loadMe(roomId: string): RealtimeIdentity {
-  const key = `me:${roomId}`;
-  const str = localStorage.getItem(key);
-  if (str) {
-    try {
-      const parsed = JSON.parse(str) as RealtimeIdentity;
-      if (parsed?.playerId && parsed?.name) return parsed;
-    } catch {
-      /* ignore parse error and regenerate */
-    }
-  }
-  const playerId = newId();
-  const name = `Player-${playerId.slice(0, 4)}`;
-  const me = { playerId, name } satisfies RealtimeIdentity;
-  localStorage.setItem(key, JSON.stringify(me));
-  return me;
+function resolveIdentity(_roomId: string): RealtimeIdentity {
+  const url = new URL(window.location.href);
+  const pid = url.searchParams.get('pid'); // 手動指定 playerId（測試用）
+  const nameQ = url.searchParams.get('name');
+
+  // 重要：為了避免「複製分頁」帶出相同 sessionStorage/localStorage，
+  // 我們在開發期採取「每次分頁載入都新生一個 playerId」的策略。
+  const playerId = pid ? sanitizeId(`p-${pid}`, `p-${newId()}`) : `p-${newId()}`;
+  const name = nameQ ? sanitizeId(nameQ, `P-${playerId.slice(0, 6)}`) : `P-${playerId.slice(0, 6)}`;
+
+  return { playerId, name };
 }
 
 // --------------------
-// Ably client & Bus factory (runtime optional)
+// Ably client & Bus factory
 // --------------------
-let ablyClient: AblyClient | undefined;
-if (ABLY_API_KEY) {
-  ablyClient = createAblyClient(
-    { apiKey: ABLY_API_KEY, appName: APP_NAME },
-    // clientId MUST match playerId per README; we set the final value after we compute `me`
-    // We will re-create if playerId differs (safe in this small app)
-    'bootstrap'
-  );
-}
-
-/**
- * Create a bus factory bound to Ably. Throws if Ably is not configured.
- */
 function makeBusFactory(me: RealtimeIdentity): BusFactory {
-  // Ensure clientId matches playerId (Host election depends on this)
-  if (!ablyClient) {
-    throw new Error('Ably is not configured. Set VITE_ABLY_API_KEY in .env to enable realtime.');
-  }
-  // If bootstrap clientId differs from me.playerId, re-create with correct clientId
-  if ((ablyClient as unknown as { clientId?: string }).clientId !== me.playerId) {
-    // Close old client and create a new one with correct clientId
-    void ablyClient.close();
-    ablyClient = createAblyClient({ apiKey: ABLY_API_KEY, appName: APP_NAME }, me.playerId);
-  }
+  // clientId 必須等於 playerId（Presence/Host 選舉依此）
+  const ablyClient: AblyClient = createAblyClient(
+    { apiKey: ABLY_API_KEY as string, appName: APP_NAME },
+    me.playerId
+  );
 
+  // 小提醒：若你需要在執行期更換 playerId，請在外層銷毀並重建本工廠。
   const factory: BusFactory = (roomId: string) => {
-    const channel = ablyClient!.getChannel(`game-${roomId}`);
+    const channel = ablyClient.getChannel(`game-${roomId}`);
     return createAblyBroadcast(channel);
   };
   return factory;
@@ -107,10 +85,14 @@ function makeBusFactory(me: RealtimeIdentity): BusFactory {
 // Bootstrap
 // --------------------
 const roomId = resolveRoomId();
-const me = loadMe(roomId);
+const me = resolveIdentity(roomId);
 
-// Optional: show room in title for convenience
+// Optional: show room in title
 document.title = `${APP_NAME} — ${roomId}`;
+
+// Boot logs（方便檢查）
+/* eslint-disable no-console */
+console.log('[BOOT] start', { roomId, me });
 
 const app = createApp(App);
 app.use(createPinia());
@@ -119,11 +101,11 @@ app.use(createPinia());
 app.provide(RoomIdKey, roomId);
 app.provide(MeKey, me);
 
-// Provide BusFactory when Ably is configured; if not, leave it undefined
-if (ABLY_API_KEY) {
-  const busFactory = makeBusFactory(me);
-  app.provide(BusFactoryKey, busFactory);
-}
+// Provide BusFactory（Ably）
+const busFactory = makeBusFactory(me);
+app.provide(BusFactoryKey, busFactory);
+console.log('[BOOT] bus ready', { adapter: 'ably', clientId: me.playerId });
+/* eslint-enable no-console */
 
 app.mount('#app');
 
