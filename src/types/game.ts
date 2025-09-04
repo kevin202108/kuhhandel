@@ -7,10 +7,10 @@ export type MoneyDenom = 0 | 10 | 50 | 100 | 200 | 500;
 export interface MoneyCard { id: string; value: MoneyDenom; }
 
 export interface Player {
-  id: string;               // playerId 最小者為 Host（字典序）
+  id: string;               // = clientId = playerId（字典序最小者可成為 Host）
   name: string;
   moneyCards: MoneyCard[];
-  animals: Record<Animal, number>; // 每種動物持有數
+  animals: Record<Animal, number>;
 }
 
 export type CardKind = 'animal';
@@ -24,8 +24,8 @@ export type Phase =
 
 export interface Bid {
   playerId: string;
-  moneyCardIds: string[];   // 出價錢卡 id 快照
-  total: number;            // 合計
+  moneyCardIds: string[];   // 出價錢卡 id 快照（Host 端重算 total）
+  total: number;            // 合計（Host 計算）
   ts: number;               // Host 接收時間（先到先贏）
   actionId: string;         // 去重
 }
@@ -34,7 +34,7 @@ export interface AuctionState {
   auctioneerId?: string;
   card?: Card;
   highest?: Bid;            // 僅保留當前最高（同額比 ts）
-  passes: string[];         // **JSON 可序列化**（由 Set 改為 string[]）
+  passes: string[];         // **JSON 可序列化**（Set→string[]）
   closed: boolean;
 }
 
@@ -42,7 +42,7 @@ export interface CowTradeState {
   initiatorId?: string;
   targetPlayerId?: string;
   targetAnimal?: Animal;
-  initiatorSecret?: string[]; // moneyCardIds（僅 Host 記憶體，不持久化）
+  initiatorSecret?: string[]; // moneyCardIds（僅 Host 記憶體，不持久化/不廣播）
   targetSecret?: string[];
 }
 
@@ -56,6 +56,7 @@ export interface GameState {
   auction: AuctionState | null;
   cow: CowTradeState | null;
   log: string[];
+  hostId?: string;          // ★ 只在 setup 鎖定與舊 Host 離線時變更
   stateVersion: number;     // Host 每次更新 +1
 }
 
