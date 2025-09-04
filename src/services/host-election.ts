@@ -85,6 +85,22 @@ export function reelectOnHostLeave(
   return pickSmallestLex(candidates);
 }
 
+/**
+ * 檢查舊 Host 是否需要重選（是否已離線）
+ */
+export function shouldReelect(oldHostId: string, memberIds: readonly string[]): boolean {
+  return !memberIds.includes(oldHostId);
+}
+
+/**
+ * 自成員清單中選出新 Host（字典序最小）
+ */
+export function getHostId(members: readonly { id: string }[]): string | null {
+  const ids = members.map((m) => m.id);
+  const candidates = sanitizeMemberIds(ids);
+  return pickSmallestLex(candidates);
+}
+
 /* ====== 簡單型別測試（開發時可暫留；若不需可移除） ======
  * // 期望：'a'
  * console.assert(chooseHostAtSetup(['b', 'a', 'c']) === 'a');
@@ -93,5 +109,11 @@ export function reelectOnHostLeave(
  * // 期望：null（無剩餘成員）
  * console.assert(reelectOnHostLeave('a', []) === null);
  * // 期望：過濾非法 id、去重
- * console.assert(chooseHostAtSetup(['A', 'a', 'a', 'c']).toString() === 'a');
+ * console.assert(chooseHostAtSetup(['A', 'a', 'a', 'c']) === 'a');
+ * // 期望：true
+ * console.assert(shouldReelect('a', ['b', 'c']) === true);
+ * // 期望：false
+ * console.assert(shouldReelect('a', ['a', 'b']) === false);
+ * // 期望：'b'
+ * console.assert(getHostId([{ id: 'b' }, { id: 'c' }]) === 'b');
  * ====================================================== */
