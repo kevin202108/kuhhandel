@@ -1,142 +1,234 @@
-// services/broadcast.ts
-// In-memory message bus for dev/local testing.
-// - Channel-scoped (one instance per room/channelName)
-// - Topic-based publish/subscribe within a channel
-// - Presence list per channel (id === playerId, as required)
-//
-// NOTE: This is an in-memory transport. It does NOT cross browser tabs or processes.
+// src/services/broadcast.ts
+import type { Types as AblyTypes } from 'ably';
+import {
+  Msg,
+  type MsgType,
+  type PayloadByType,
+  type Envelope,
+  makeEnvelope,
+} from '@/networking/protocol';
+import { getRealtime, getChannel } from '@/networking/ablyClient';
 
+/**
+ * Presence 資料型別（廣播層也要定義一次，避免 any）
+ */
+export interface PresenceMeta {
+  playerId: string;
+  name: string;
+}
+
+/**
+ * 廣播介面：供 main.ts、host-dispatcher、UI 使用
+ */
 export interface IBroadcast {
-  publish<T>(topic: string, payload: T): Promise<void>;
-  subscribe<T>(topic: string, handler: (payload: T) => void): () => void;
+  publish<T extends MsgType>(
+    type: T,
+    payload: PayloadByType[T],
+    opts?: { actionId?: string; stateVersion?: number }
+  ): Promise<void>;
+
+  subscribe<T extends MsgType>(
+    type: T,
+    handler: (envelope: Envelope<PayloadByType[T]>) => void
+  ): () => void;
+
   presence(): {
-    // presence clientId MUST equal playerId (enforced by storing playerId as id)
-    enter(meta: { playerId: string; name: string }): Promise<void>;
+    enter(meta: PresenceMeta): Promise<void>;
     leave(): Promise<void>;
-    getMembers(): Promise<
-      Array<{ id: string; data: { playerId: string; name: string } }>
-    >;
+    getMembers(): Promise<Array<{ id: string; data: PresenceMeta }>>;
   };
 }
 
-type TopicHandler<T = unknown> = (payload: T) => void;
+/** ────────────────────────────────────────────────────────────────────────────
+ *  內部小工具
+ *  ────────────────────────────────────────────────────────────────────────────
+ */
 
-type PresenceMeta = { playerId: string; name: string };
-
-interface ChannelState {
-  subs: Map<string, Set<TopicHandler>>;
-  members: Map<string, PresenceMeta>;
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null;
 }
 
-const __registry = new Map<string, ChannelState>();
+function isPresenceMeta(v: unknown): v is PresenceMeta {
+  return (
+    isRecord(v) &&
+    typeof v.playerId === 'string' &&
+    v.playerId.length > 0 &&
+    typeof v.name === 'string'
+  );
+}
 
-function getOrCreateChannel(name: string): ChannelState {
-  let ch = __registry.get(name);
-  if (!ch) {
-    ch = { subs: new Map(), members: new Map() };
-    __registry.set(name, ch);
+function isEnvelopeOfType<T extends MsgType>(
+  v: unknown,
+  type: T
+): v is Envelope<PayloadByType[T]> {
+  if (!isRecord(v)) return false;
+  return v.type === type && 'payload' in v && 'ts' in v && 'schemaVersion' in v;
+}
+
+function getEnv(key: string): string {
+  // Null Guard：遇到 string | null/undefined 時以 'unknown' 退回或直接擲錯
+  const val = (import.meta as unknown as { env: Record<string, string | undefined> }).env[key];
+  if (!val) {
+    // 這裡直接 throw，以避免把 undefined 傳給 Ably 或後續流程
+    throw new Error(`Missing required environment variable: ${key}`);
   }
-  return ch;
+  return val;
 }
 
-function delay(ms: number): Promise<void> {
-  return ms > 0 ? new Promise((r) => setTimeout(r, ms)) : Promise.resolve();
-}
-
-/**
- * Create an in-memory broadcast bound to a channel (e.g. "game-ROOM123").
- * @param channelName Unique channel identifier (per room)
- * @param opts Optional latency simulation
+/** ────────────────────────────────────────────────────────────────────────────
+ *  工廠：建立 Ably 版廣播
+ *  ────────────────────────────────────────────────────────────────────────────
  */
-export function createMemoryBroadcast(
-  channelName: string,
-  opts?: { latencyMs?: number }
-): IBroadcast {
-  const channel = getOrCreateChannel(channelName);
-  const latency = Math.max(0, opts?.latencyMs ?? 0);
 
-  // Track the "local" presence for this instance so leave() knows whom to remove.
-  let currentClientId: string | null = null;
+export function createBroadcast(roomId: string, playerId: string): IBroadcast {
+  // 檢查 API Key（禁止把 undefined 傳給 Ably）
+  // 即使 ablyClient 也會檢查，這裡再次把關，避免錯誤來源不明。
+  // 讀取後不使用其值，只為確保存在。
+  getEnv('VITE_ABLY_API_KEY');
 
-  return {
-    async publish<T>(topic: string, payload: T): Promise<void> {
-      // Simulate network latency then fan-out to current subscribers snapshot.
-      await delay(latency);
-      const handlers = channel.subs.get(topic);
-      if (!handlers || handlers.size === 0) return;
+  const realtime = getRealtime(playerId);
+  const clientId = realtime.auth.clientId ?? 'unknown';
+  if (clientId !== playerId) {
+    // Identity contract：clientId 必須等於 playerId
+    throw new Error(
+      `[broadcast] clientId (${clientId}) !== playerId (${playerId}); aborting.`
+    );
+  }
 
-      // Copy before iterating to avoid mutation issues during delivery.
-      const snapshot = Array.from(handlers);
-      for (const fn of snapshot) {
-        try {
-          fn(payload as unknown);
-        } catch (err) {
-          // Isolate listener errors; log so devs can see issues during local runs.
+  const channel = getChannel(roomId);
+
+  async function publish<T extends MsgType>(
+    type: T,
+    payload: PayloadByType[T],
+    opts?: { actionId?: string; stateVersion?: number }
+  ): Promise<void> {
+    const env = makeEnvelope(type, roomId, playerId, payload, opts);
+    // 額外的防呆：避免把錯的 senderId 或 type 廣播出去
+    if (env.senderId !== playerId || env.type !== type) {
+      throw new Error(
+        `[broadcast.publish] envelope mismatch: senderId=${env.senderId}, type=${env.type}`
+      );
+    }
+
+    // 日誌：有助追查
+    // eslint-disable-next-line no-console
+    console.debug('[broadcast.publish]', { type, roomId, playerId, stateVersion: opts?.stateVersion });
+
+    await channel.publish({ name: type, data: env });
+  }
+
+  function subscribe<T extends MsgType>(
+    type: T,
+    handler: (envelope: Envelope<PayloadByType[T]>) => void
+  ): () => void {
+    // Ably 的 subscribe 回呼非必須 async；若需要 await，請用 void 包裝避免 no-misused-promises
+    const listener = (msg: AblyTypes.Message): void => {
+      try {
+        const data: unknown = msg.data;
+        if (!isEnvelopeOfType(data, type)) {
           // eslint-disable-next-line no-console
-          console.error('[broadcast] handler error on topic', topic, err);
-        }
-      }
-    },
-
-    subscribe<T>(topic: string, handler: (payload: T) => void): () => void {
-      const set = channel.subs.get(topic) ?? new Set<TopicHandler>();
-      set.add(handler as TopicHandler);
-      channel.subs.set(topic, set);
-
-      let unsubbed = false;
-      return () => {
-        if (unsubbed) return;
-        unsubbed = true;
-        const s = channel.subs.get(topic);
-        if (!s) return;
-        s.delete(handler as TopicHandler);
-        if (s.size === 0) channel.subs.delete(topic);
-      };
-    },
-
-    presence() {
-      return {
-        async enter(meta: { playerId: string; name: string }): Promise<void> {
-          if (!meta || !meta.playerId) {
-            throw new Error('presence.enter requires { playerId, name }');
-          }
-          currentClientId = meta.playerId;
-          // Enforce presence id === playerId
-          channel.members.set(meta.playerId, {
-            playerId: meta.playerId,
-            name: meta.name,
+          console.warn('[broadcast.subscribe] drop message: not a valid envelope or type mismatch', {
+            expected: type,
+            gotName: msg.name ?? 'unknown',
           });
-          await delay(latency);
-        },
+          return;
+        }
+        // eslint-disable-next-line no-console
+        console.debug('[broadcast.recv]', {
+          type,
+          senderId: (data as Envelope<unknown>).senderId ?? 'unknown',
+          ts: (data as Envelope<unknown>).ts ?? 0,
+        });
+        handler(data);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('[broadcast.subscribe] handler error', err);
+      }
+    };
 
-        async leave(): Promise<void> {
-          if (currentClientId) {
-            channel.members.delete(currentClientId);
-            currentClientId = null;
+    channel.subscribe(type, listener);
+    return () => {
+      channel.unsubscribe(type, listener);
+      // eslint-disable-next-line no-console
+      console.debug('[broadcast.unsubscribe]', { type });
+    };
+  }
+
+  function presence() {
+    return {
+      async enter(meta: PresenceMeta): Promise<void> {
+        // type guard + Identity contract
+        if (!isPresenceMeta(meta)) {
+          throw new Error('[broadcast.presence.enter] invalid meta');
+        }
+        if (meta.playerId !== playerId) {
+          throw new Error(
+            `[broadcast.presence.enter] meta.playerId (${meta.playerId}) !== playerId (${playerId})`
+          );
+        }
+        // eslint-disable-next-line no-console
+        console.debug('[presence.enter]', { clientId: clientId ?? 'unknown', meta });
+
+        await channel.presence.enter(meta);
+        // 進房後廣播 system.join（由上層決定是否要送；此層只做 presence.enter）
+      },
+
+      async leave(): Promise<void> {
+        // eslint-disable-next-line no-console
+        console.debug('[presence.leave]', { clientId: clientId ?? 'unknown' });
+        await channel.presence.leave();
+      },
+
+      async getMembers(): Promise<Array<{ id: string; data: PresenceMeta }>> {
+        const list: AblyTypes.PresenceMessage[] = await new Promise((resolve, reject) => {
+          channel.presence.get((err?: Error | null, members?: AblyTypes.PresenceMessage[] | null) =>
+            err ? reject(err) : resolve(members ?? [])
+          );
+        });
+
+        // 以 map() 直接回傳物件（不要 push）
+        const members = list.map((m) => {
+          // Ably 可能回傳 null/undefined，做 Null Guard
+          const id = (m.clientId ?? 'unknown') as string;
+          const rawData: unknown = m.data;
+
+          let data: PresenceMeta;
+          if (isPresenceMeta(rawData)) {
+            data = rawData;
+          } else {
+            // eslint-disable-next-line no-console
+            console.warn('[presence.getMembers] invalid meta; coercing', {
+              clientId: id,
+              data: rawData,
+            });
+            data = { playerId: id, name: 'unknown' };
           }
-          await delay(latency);
-        },
 
-        async getMembers(): Promise<
-          Array<{ id: string; data: { playerId: string; name: string } }>
-        > {
-          await delay(latency);
-          // Return deterministic order (lexicographic by id) to help tests/host-election.
-          const list = Array.from(channel.members.values()).map((m) => ({
-            id: m.playerId,
-            data: { playerId: m.playerId, name: m.name },
-          }));
-          list.sort((a, b) => a.id.localeCompare(b.id));
-          return list;
-        },
-      };
-    },
-  };
-}
+          // Identity contract：clientId 必須等於 data.playerId
+          if (data.playerId !== id) {
+            // eslint-disable-next-line no-console
+            console.warn('[presence.getMembers] playerId mismatch; coercing', {
+              clientId: id,
+              dataPlayerId: data.playerId ?? 'unknown',
+            });
+            data = { ...data, playerId: id };
+          }
 
-/**
- * Test helper: clear all channels/state. Useful between test cases.
- */
-export function __resetMemoryBroadcast(): void {
-  __registry.clear();
+          // 也避免 name 為空或 null
+          const safeName = (data.name ?? 'unknown').trim();
+          return { id, data: { playerId: id, name: safeName.length > 0 ? safeName : 'unknown' } };
+        });
+
+        // eslint-disable-next-line no-console
+        console.debug('[presence.members]', {
+          roomId,
+          count: members.length,
+          ids: members.map((m) => m.id),
+        });
+        return members;
+      },
+    };
+  }
+
+  return { publish, subscribe, presence };
 }
