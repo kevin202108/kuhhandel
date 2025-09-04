@@ -9,6 +9,8 @@
     "types": ["vite/client", "vitest", "node"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
     "useDefineForClassFields": true
   },
   "include": ["src/**/*.ts", "src/**/*.vue", "env.d.ts"]

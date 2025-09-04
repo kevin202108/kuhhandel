@@ -4,6 +4,7 @@
   "private": true,
   "description": "Multiplayer Auction + Cow Trade (Vue 3 + Pinia + Ably)",
   "type": "module",
+  "packageManager": "npm@10",
   "engines": { "node": ">=18.17.0" },
   "scripts": {
     "dev": "vite",
@@ -13,7 +14,9 @@
     "test": "vitest run",
     "test:ui": "vitest --ui",
     "lint": "eslint --ext .ts,.vue src",
-    "format": "prettier --write ."
+    "lint:fix": "eslint --ext .ts,.vue src --fix",
+    "format": "prettier --write .",
+    "check": "npm run type-check && npm run lint && npm run test"
   },
   "dependencies": {
     "ably": "^1.2.38",
@@ -28,7 +31,10 @@
     "@typescript-eslint/eslint-plugin": "^7.8.0",
     "@typescript-eslint/parser": "^7.8.0",
     "eslint": "^8.57.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-promise": "^6.1.1",
     "eslint-plugin-vue": "^9.26.0",
+    "eslint-config-prettier": "^9.1.0",
     "happy-dom": "^14.10.0",
     "prettier": "^3.3.0",
     "typescript": "^5.4.0",
