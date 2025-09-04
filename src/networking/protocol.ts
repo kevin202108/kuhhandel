@@ -1,14 +1,16 @@
 // src/networking/protocol.ts
-// 唯一真相來源（SSOT）：依據 Master README（完整版）
+// 協定層：訊息常數、Payload 型別映射、Envelope、工具方法。
+// 不使用 any；預設泛型為 unknown。支援 exactOptionalPropertyTypes。
 
-import type { GameState, Animal } from '@/types/game';
+import type { Animal, GameState } from '@/types/game';
 
-/** 協定 schema 版本（Host/Client 用來判斷是否需要清檔或做相容處理） */
+/** 協定版本：若 schema 有破壞性變更，務必 +1 並（建議）更換頻道前綴 */
 export const SCHEMA_VERSION = 1 as const;
 
-/** 訊息 type 常數（避免手滑字串） */
+/** 訊息常數：統一來源避免手滑字串。 */
 export const Msg = {
   Action: {
+    StartGame: 'action.startGame',
     PlaceBid: 'action.placeBid',
     PassBid: 'action.passBid',
     ChooseAuction: 'action.chooseAuction',
@@ -30,152 +32,137 @@ export const Msg = {
   }
 } as const;
 
-export type ActionMsgType = typeof Msg.Action[keyof typeof Msg.Action];
-export type StateMsgType = typeof Msg.State[keyof typeof Msg.State];
-export type SystemMsgType = typeof Msg.System[keyof typeof Msg.System];
-export type MsgType = ActionMsgType | StateMsgType | SystemMsgType;
+type MsgAction = typeof Msg.Action[keyof typeof Msg.Action];
+type MsgState = typeof Msg.State[keyof typeof Msg.State];
+type MsgSystem = typeof Msg.System[keyof typeof Msg.System];
 
-/* -------------------------- Payload 型別定義 -------------------------- */
-export interface ActionPlaceBid { playerId: string; moneyCardIds: string[]; }
-export interface ActionPassBid { playerId: string; }
-export interface ActionChooseAuction { playerId: string; }
-export interface ActionChooseCowTrade { playerId: string; }
-export interface ActionSelectCowTarget { playerId: string; targetId: string; }
-export interface ActionSelectCowAnimal { playerId: string; animal: Animal; }
-export interface ActionCommitCowTrade { playerId: string; moneyCardIds: string[]; }
-export interface ActionHostAward { playerId: string; }
-export interface ActionHostBuyback { playerId: string; }
+/** 所有合法訊息 type 的聯集 */
+export type MsgType = MsgAction | MsgState | MsgSystem;
 
-export interface StateUpdate { state: GameState; }
-
-export interface SystemJoin { playerId: string; name: string; }
-export interface SystemLeave { playerId: string; }
-export interface SystemHostChanged { newHostId: string; }
-export interface SystemRequestState { requesterId: string; }
-
-/* ------------------- 訊息型別 → Payload 型別對映（嚴格） ------------------- */
+/**
+ * PayloadByType：每個訊息 type 對應的 payload 型別。
+ * 目標：讓 publish(type, payload) 在編譯期就能檢查 payload 正確。
+ */
 export type PayloadByType =
-  // Actions
-  {
-    [K in typeof Msg.Action.PlaceBid]: ActionPlaceBid;
-  } & {
-    [K in typeof Msg.Action.PassBid]: ActionPassBid;
-  } & {
-    [K in typeof Msg.Action.ChooseAuction]: ActionChooseAuction;
-  } & {
-    [K in typeof Msg.Action.ChooseCowTrade]: ActionChooseCowTrade;
-  } & {
-    [K in typeof Msg.Action.SelectCowTarget]: ActionSelectCowTarget;
-  } & {
-    [K in typeof Msg.Action.SelectCowAnimal]: ActionSelectCowAnimal;
-  } & {
-    [K in typeof Msg.Action.CommitCowTrade]: ActionCommitCowTrade;
-  } & {
-    [K in typeof Msg.Action.HostAward]: ActionHostAward;
-  } & {
-    [K in typeof Msg.Action.HostBuyback]: ActionHostBuyback;
-  } &
-  // State
-  {
-    [K in typeof Msg.State.Update]: StateUpdate;
-  } &
-  // System
-  {
-    [K in typeof Msg.System.Join]: SystemJoin;
-  } & {
-    [K in typeof Msg.System.Leave]: SystemLeave;
-  } & {
-    [K in typeof Msg.System.HostChanged]: SystemHostChanged;
-  } & {
-    [K in typeof Msg.System.RequestState]: SystemRequestState;
-  };
+  // Action messages
+  ({
+    [K in MsgAction]: K extends typeof Msg.Action.StartGame
+      ? { playerId: string }
+      : K extends typeof Msg.Action.PlaceBid
+      ? { playerId: string; moneyCardIds: string[] }
+      : K extends typeof Msg.Action.PassBid
+      ? { playerId: string }
+      : K extends typeof Msg.Action.ChooseAuction
+      ? { playerId: string }
+      : K extends typeof Msg.Action.ChooseCowTrade
+      ? { playerId: string }
+      : K extends typeof Msg.Action.SelectCowTarget
+      ? { playerId: string; targetId: string }
+      : K extends typeof Msg.Action.SelectCowAnimal
+      ? { playerId: string; animal: Animal }
+      : K extends typeof Msg.Action.CommitCowTrade
+      ? { playerId: string; moneyCardIds: string[] } // 僅 Host 可見
+      : K extends typeof Msg.Action.HostAward
+      ? { playerId: string }
+      : K extends typeof Msg.Action.HostBuyback
+      ? { playerId: string }
+      : never;
+  }) &
+  // State messages
+  ({
+    [K in MsgState]: K extends typeof Msg.State.Update ? { state: GameState } : never;
+  }) &
+  // System messages
+  ({
+    [K in MsgSystem]:
+      K extends typeof Msg.System.Join ? { playerId: string; name: string }
+      : K extends typeof Msg.System.Leave ? { playerId: string }
+      : K extends typeof Msg.System.HostChanged ? { newHostId: string }
+      : K extends typeof Msg.System.RequestState ? { requesterId: string }
+      : never;
+  });
 
-/* ------------------------------ Envelope ------------------------------ */
-export type Envelope<T extends MsgType = MsgType> = {
-  type: T;
-  roomId: string;
-  senderId: string;
-  /** 僅 action.* 帶入，用於 Host 去重 */
-  actionId?: string;
-  /** 僅 state.update 帶入（Host 每次更新 +1） */
-  stateVersion?: number;
-  /** Host 接收/廣播時間（毫秒）；同價競標以此先到先贏 */
-  ts: number;
-  /** 依照 type 定義之資料 */
-  payload: PayloadByType[T];
-  /** 協定版本（SCHEMA_VERSION） */
-  schemaVersion: typeof SCHEMA_VERSION;
-};
+/** 通用封包外層 Envelope。預設泛型為 unknown（禁止 any）。 */
+export interface Envelope<T = unknown> {
+  type: MsgType;         // 訊息型別
+  roomId: string;        // 房號
+  senderId: string;      // = clientId = playerId
+  actionId?: string;     // 僅 action.*
+  stateVersion?: number; // 僅 state.update（單調遞增）
+  ts: number;            // Host 接收/廣播時間（毫秒）
+  payload: T;            // 內容（依 type）
+  schemaVersion: number; // 協定版本（例：1）
+}
 
-/** 跨所有訊息的 Envelope 類型 */
-export type AnyEnvelope = Envelope<MsgType>;
-
-/* --------------------------------- 工具 --------------------------------- */
-
-/** 產生 Envelope（會自動填入 ts 與 schemaVersion） */
-export function makeEnvelope<T extends MsgType>(args: {
-  type: T;
-  roomId: string;
-  senderId: string;
-  payload: PayloadByType[T];
-  actionId?: string;
-  stateVersion?: number;
-  ts?: number; // 預設 Date.now()
-}): Envelope<T> {
-  const { type, roomId, senderId, payload, actionId, stateVersion } = args;
-  const ts = args.ts ?? Date.now();
-  return {
+/** 產生型別安全的 Envelope。支援 exactOptionalPropertyTypes：undefined 欄位不會被寫入。 */
+export function makeEnvelope<T extends MsgType>(
+  type: T,
+  roomId: string,
+  senderId: string,
+  payload: PayloadByType[T],
+  opts?: { actionId?: string; stateVersion?: number; ts?: number }
+): Envelope<PayloadByType[T]> {
+  const base = {
     type,
     roomId,
     senderId,
+    ts: typeof opts?.ts === 'number' ? opts.ts : Date.now(),
     payload,
-    actionId,
-    stateVersion,
-    ts,
     schemaVersion: SCHEMA_VERSION
   };
+
+  // 僅在有值時加入可選屬性，避免「鍵存在但值為 undefined」
+  const withActionId =
+    opts?.actionId !== undefined ? { actionId: opts.actionId } : ({} as const);
+  const withStateVersion =
+    opts?.stateVersion !== undefined ? { stateVersion: opts.stateVersion } : ({} as const);
+
+  const env: Envelope<PayloadByType[T]> = {
+    ...base,
+    ...withActionId,
+    ...withStateVersion
+  };
+
+  return env;
 }
 
-/** 簡易 Envelope 形狀檢查（執行期） */
-export function isEnvelope(x: unknown): x is AnyEnvelope {
-  if (!x || typeof x !== 'object') return false;
-  const o = x as Record<string, unknown>;
-  return (
-    typeof o.type === 'string' &&
-    typeof o.roomId === 'string' &&
-    typeof o.senderId === 'string' &&
-    typeof o.ts === 'number' &&
-    typeof o.schemaVersion === 'number'
-  );
+/** 型別工具：從訊息 type 取得對應 payload 型別。 */
+export type PayloadOf<T extends MsgType> = PayloadByType[T];
+
+/** 型別守衛：是否為 state.update 封包。 */
+export function isStateUpdate(
+  env: Envelope<unknown>
+): env is Envelope<PayloadByType[typeof Msg.State.Update]> {
+  return env.type === Msg.State.Update;
 }
 
-/** Schema 相容檢查（目前採嚴格相等） */
-export function isCompatibleSchema(e: { schemaVersion: number }): boolean {
-  return e.schemaVersion === SCHEMA_VERSION;
+/**
+ * 是否為「當前 Host 的有效快照」：
+ *  - 僅接受 senderId === hostId 的 state.update
+ *  - 版本比較請搭配 isNewerUpdate
+ */
+export function isHostStateUpdate(
+  env: Envelope<unknown>,
+  hostId: string | undefined
+): env is Envelope<PayloadByType[typeof Msg.State.Update]> {
+  return isStateUpdate(env) && typeof hostId === 'string' && env.senderId === hostId;
 }
 
-/** 是否 action.* 類型 */
-export function isActionType(t: MsgType): t is ActionMsgType {
-  return (t as string).startsWith('action.');
-}
-/** 是否 state.* 類型 */
-export function isStateType(t: MsgType): t is StateMsgType {
-  return (t as string).startsWith('state.');
-}
-/** 是否 system.* 類型 */
-export function isSystemType(t: MsgType): t is SystemMsgType {
-  return (t as string).startsWith('system.');
+/** 版本比較：只有 incoming > current 才應套用。 */
+export function isNewerUpdate(
+  current: number | undefined,
+  incoming: number | undefined
+): boolean {
+  if (typeof incoming !== 'number') return false;
+  if (typeof current !== 'number') return true;
+  return incoming > current;
 }
 
-/** Envelope 是否為特定 type（提供類型縮小） */
-export function isOfType<T extends MsgType>(
-  env: AnyEnvelope,
-  type: T
-): env is Extract<AnyEnvelope, { type: T }> {
-  return env.type === type;
-}
-
-/** 頻道命名規則：game-{roomId} */
-export function channelName(roomId: string): string {
-  return `game-${roomId}`;
+/** 簡單協定版本檢查（可在接收封包時保守拒收不相容版本）。 */
+export function assertSchemaCompatible(schemaVersion: number): void {
+  if (schemaVersion !== SCHEMA_VERSION) {
+    throw new Error(
+      `Incompatible schema version: got=${schemaVersion}, expected=${SCHEMA_VERSION}`
+    );
+  }
 }
