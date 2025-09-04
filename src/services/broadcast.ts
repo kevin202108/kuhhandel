@@ -19,7 +19,7 @@ export interface IBroadcast {
   };
 }
 
-type TopicHandler<T = any> = (payload: T) => void;
+type TopicHandler<T = unknown> = (payload: T) => void;
 
 type PresenceMeta = { playerId: string; name: string };
 
@@ -69,7 +69,7 @@ export function createMemoryBroadcast(
       const snapshot = Array.from(handlers);
       for (const fn of snapshot) {
         try {
-          fn(payload as any);
+          fn(payload as unknown);
         } catch (err) {
           // Isolate listener errors; log so devs can see issues during local runs.
           // eslint-disable-next-line no-console
