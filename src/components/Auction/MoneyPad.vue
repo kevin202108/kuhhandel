@@ -101,9 +101,9 @@ function shortId(id: string) {
   font-weight: 800;
   letter-spacing: 0.2px;
 }
-.card.zero .value {
+/* .card.zero .value {
   color: #64748b;
-}
+} */
 .card .id {
   color: #6b7280;
   font-size: 11px;
