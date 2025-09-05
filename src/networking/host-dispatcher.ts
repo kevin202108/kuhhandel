@@ -5,8 +5,7 @@ import {
   Msg,
   type MsgType,
   type PayloadByType,
-  type Envelope,
-  makeEnvelope,
+  type Envelope
 } from '@/networking/protocol';
 
 export interface HostMutators {
@@ -24,6 +23,7 @@ export interface HostMutators {
     settle: (mode: 'award' | 'buyback') => void;
   };
   cow: {
+    // ★ 已移除 startCowTrade：依 README，流程從 chooseCowTrade → 選 target → 選 animal → commit → reveal
     selectTarget: (targetPlayerId: string) => void;
     selectAnimal: (animal: Animal) => void;
     commitSecret: (playerId: string, moneyCardIds: string[]) => void;
@@ -33,6 +33,7 @@ export interface HostMutators {
     addOnSetup: (playerId: string, name: string) => void;
     removeOnSetup: (playerId: string) => void;
   };
+  /** Host 成功處理 action 後由 dispatcher 呼叫以遞增 stateVersion */
   bumpStateVersion: () => void;
 }
 
@@ -65,7 +66,7 @@ class ActionDeduper {
 /** 型別守門：判斷 unknown 是否為特定 MsgType 的 Envelope */
 function isEnvelopeOfType<K extends MsgType>(
   value: unknown,
-  expectedType: K,
+  expectedType: K
 ): value is Envelope<PayloadByType[K]> {
   if (typeof value !== 'object' || value === null) return false;
   const obj = value as Partial<Envelope<unknown>>;
@@ -77,17 +78,17 @@ export function mountHostDispatcher(
   broadcast: IBroadcast,
   roomId: string,
   getState: () => GameState,
-  mutate: HostMutators,
+  mutate: HostMutators
 ): () => void {
   const unsubscribers: Array<() => void> = [];
   const deduper = new ActionDeduper(500, 10 * 60 * 1000); // 500 entries / 10 minutes
 
   // --- 工具 ---
 
-  /** 訂閱某訊息型別；用 unknown 收，內部以 type guard 窄化 */
+  /** 訂閱某訊息型別；用 unknown 收，內部以 type guard 窄化（這裡收的是 Envelope） */
   const sub = <T extends MsgType>(
     type: T,
-    handler: (env: Envelope<PayloadByType[T]>) => void,
+    handler: (env: Envelope<PayloadByType[T]>) => void
   ): void => {
     const off = broadcast.subscribe(type, (raw: unknown) => {
       if (!isEnvelopeOfType(raw, type)) return;
@@ -119,11 +120,12 @@ export function mountHostDispatcher(
   };
 
   const publishStateUpdate = async (why: string): Promise<void> => {
-    const hostId = getHostIdOrThrow();
     const snapshot = sanitizeSnapshot(getState());
     // eslint-disable-next-line no-console
     console.debug('[host-dispatcher] broadcast state.update (%s) v%d', why, snapshot.stateVersion);
-    await broadcast.publish(Msg.State.Update, { state: snapshot }, { stateVersion: snapshot.stateVersion });
+    // ★ 發 payload（非 Envelope），stateVersion 內含在 GameState
+    const payload: PayloadByType[typeof Msg.State.Update] = { state: snapshot };
+    await broadcast.publish(Msg.State.Update, payload);
   };
 
   const ensureActionId = (env: Envelope<unknown>): string | null => {
@@ -152,7 +154,7 @@ export function mountHostDispatcher(
   };
 
   const handleChooseAuction = (
-    env: Envelope<PayloadByType[typeof Msg.Action.ChooseAuction]>,
+    env: Envelope<PayloadByType[typeof Msg.Action.ChooseAuction]>
   ): void => {
     if (!phaseIs('turn.choice')) return;
     if (!isTurnOwner(env.payload.playerId)) return;
@@ -164,11 +166,14 @@ export function mountHostDispatcher(
   };
 
   const handleChooseCowTrade = (
-    env: Envelope<PayloadByType[typeof Msg.Action.ChooseCowTrade]>,
+    env: Envelope<PayloadByType[typeof Msg.Action.ChooseCowTrade]>
   ): void => {
     if (!phaseIs('turn.choice')) return;
     if (!isTurnOwner(env.payload.playerId)) return;
 
+    // ★ 依 README Phase 2：不新增 startCowTrade。
+    //   這裡僅記 log + 發快照；進一步的 phase 轉移請由 store 在
+    //   下一個 action（SelectCowTarget）時處理（允許從 turn.choice 進入）。
     mutate.game.appendLog(`ChooseCowTrade by ${env.payload.playerId}`);
     mutate.bumpStateVersion();
     void publishStateUpdate('chooseCowTrade');
@@ -178,9 +183,9 @@ export function mountHostDispatcher(
     if (!phaseIs('auction.bidding')) return;
     const actionId = ensureActionId(env);
     if (actionId === null) return;
-    if (deduper.seen(actionId, env.ts)) return;
+    if (deduper.seen(actionId, Date.now())) return; // ★ Host 時間決定先後
 
-    mutate.auction.placeBid(env.payload.playerId, env.payload.moneyCardIds, actionId, env.ts);
+    mutate.auction.placeBid(env.payload.playerId, env.payload.moneyCardIds, actionId, Date.now());
     mutate.game.appendLog(`Bid by ${env.payload.playerId}`);
     mutate.bumpStateVersion();
     void publishStateUpdate('placeBid');
@@ -190,7 +195,7 @@ export function mountHostDispatcher(
     if (!phaseIs('auction.bidding')) return;
     const actionId = ensureActionId(env);
     if (actionId === null) return;
-    if (deduper.seen(actionId, env.ts)) return;
+    if (deduper.seen(actionId, Date.now())) return;
 
     mutate.auction.passBid(env.payload.playerId);
     mutate.game.appendLog(`Pass by ${env.payload.playerId}`);
@@ -205,7 +210,7 @@ export function mountHostDispatcher(
 
     const actionId = ensureActionId(env);
     if (actionId === null) return;
-    if (deduper.seen(actionId, env.ts)) return;
+    if (deduper.seen(actionId, Date.now())) return;
 
     mutate.auction.hostAward();
     mutate.auction.settle('award');
@@ -215,7 +220,7 @@ export function mountHostDispatcher(
   };
 
   const handleHostBuyback = (
-    env: Envelope<PayloadByType[typeof Msg.Action.HostBuyback]>,
+    env: Envelope<PayloadByType[typeof Msg.Action.HostBuyback]>
   ): void => {
     if (!phaseIs('auction.closing')) return;
     const hostId = getHostIdOrThrow();
@@ -223,7 +228,7 @@ export function mountHostDispatcher(
 
     const actionId = ensureActionId(env);
     if (actionId === null) return;
-    if (deduper.seen(actionId, env.ts)) return;
+    if (deduper.seen(actionId, Date.now())) return;
 
     mutate.auction.hostBuyback();
     mutate.auction.settle('buyback');
@@ -233,9 +238,10 @@ export function mountHostDispatcher(
   };
 
   const handleSelectCowTarget = (
-    env: Envelope<PayloadByType[typeof Msg.Action.SelectCowTarget]>,
+    env: Envelope<PayloadByType[typeof Msg.Action.SelectCowTarget]>
   ): void => {
-    if (!phaseIs('cow.selectTarget')) return;
+    // ★ store 需允許從 turn.choice → selectTarget（Phase 2 不新增 start 動作）
+    if (!(phaseIs('cow.selectTarget') || phaseIs('turn.choice'))) return;
     if (!isTurnOwner(env.payload.playerId)) return;
 
     mutate.cow.selectTarget(env.payload.targetId);
@@ -245,7 +251,7 @@ export function mountHostDispatcher(
   };
 
   const handleSelectCowAnimal = (
-    env: Envelope<PayloadByType[typeof Msg.Action.SelectCowAnimal]>,
+    env: Envelope<PayloadByType[typeof Msg.Action.SelectCowAnimal]>
   ): void => {
     if (!phaseIs('cow.selectAnimal')) return;
     if (!isTurnOwner(env.payload.playerId)) return;
@@ -257,12 +263,12 @@ export function mountHostDispatcher(
   };
 
   const handleCommitCowTrade = (
-    env: Envelope<PayloadByType[typeof Msg.Action.CommitCowTrade]>,
+    env: Envelope<PayloadByType[typeof Msg.Action.CommitCowTrade]>
   ): void => {
     if (!phaseIs('cow.commit')) return;
     const actionId = ensureActionId(env);
     if (actionId === null) return;
-    if (deduper.seen(actionId, env.ts)) return;
+    if (deduper.seen(actionId, Date.now())) return;
 
     mutate.cow.commitSecret(env.payload.playerId, env.payload.moneyCardIds);
     mutate.game.appendLog(`Cow commit by ${env.payload.playerId}`);
@@ -273,7 +279,7 @@ export function mountHostDispatcher(
   // --- System handlers（Host 回應） ---
 
   const handleRequestState = (
-    env: Envelope<PayloadByType[typeof Msg.System.RequestState]>,
+    env: Envelope<PayloadByType[typeof Msg.System.RequestState]>
   ): void => {
     // eslint-disable-next-line no-console
     console.debug('[host-dispatcher] requestState from %s', env.payload.requesterId);
@@ -304,7 +310,7 @@ export function mountHostDispatcher(
     }
   };
 
-  // --- 註冊訂閱 ---
+  // --- 註冊訂閱（Envelope-based for actions/system） ---
 
   sub(Msg.Action.StartGame, handleStartGame);
   sub(Msg.Action.ChooseAuction, handleChooseAuction);
