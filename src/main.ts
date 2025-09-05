@@ -123,3 +123,14 @@ function exposeDebugHelpers(isConnected: boolean) {
     );
   }
 }
+import broadcast from '@/services/broadcast';
+
+
+// 先在別處呼叫 initAbly(playerId)（Step 2 完成的那支）；否則 ablyClient.assertClient 會丟錯
+// 例如：initAbly((globalThis as any).__PLAYER__ ?? 'alice');
+
+const unsub = broadcast.subscribe(Msg.System.Join, (env) => {
+  console.log('JOIN envelope received:', env);
+});
+
+void broadcast.publish(Msg.System.Join, { playerId: 'alice', name: 'Alice' });
