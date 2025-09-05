@@ -1,7 +1,13 @@
+// src/store/auction.ts
 import { defineStore } from 'pinia';
 import { useGameStore } from './game';
 import type { AuctionState, Bid, GameState, MoneyCard, Player } from '@/types/game';
 
+/* ----------------------------- 純工具（JSON-safe） ----------------------------- */
+function clean<T>(v: T): T {
+  // 確保寫入 store 的一律是可序列化的 plain object（去除 Proxy / getter / Symbol 等）
+  return JSON.parse(JSON.stringify(v)) as T;
+}
 function uniq<T>(arr: T[]): T[] {
   return Array.from(new Set(arr));
 }
@@ -21,7 +27,7 @@ function moneyTotalOf(player: Player, moneyCardIds: string[]): number {
   }
   let total = 0;
   const byId = new Map(player.moneyCards.map((m) => [m.id, m]));
-  for (const id of want) total += byId.get(id)!.value;
+  for (const id of want) total += (byId.get(id) as MoneyCard).value;
   return total;
 }
 /** 有錢的非主持人（沒錢者不需要按 pass） */
@@ -31,8 +37,10 @@ function eligibleNonHostIdsForBidding(game: GameState, auctioneerId: string): st
     .map((p) => p.id);
 }
 
+/* ----------------------------- Store ----------------------------- */
 export const useAuctionStore = defineStore('auction', {
   state: () => ({
+    // ★ 只存 JSON 可序列化的 plain object 或 null
     auction: null as AuctionState | null
   }),
 
@@ -47,18 +55,20 @@ export const useAuctionStore = defineStore('auction', {
   actions: {
     /**
      * 依「目前最高出價者免按放棄」的規則，檢查是否應進入結標
+     * ★ 僅讀其他 store，不把其他 store 的物件直接塞進本 store
      */
     maybeEnterClosing(): void {
       const game = useGameStore();
       const a = this.auction;
       if (!a || game.phase !== 'auction.bidding') return;
 
-      const eligible = eligibleNonHostIdsForBidding(game.$state, a.auctioneerId!);
+      const eligible = eligibleNonHostIdsForBidding(game.$state, a.auctioneerId as string);
       const highestId = a.highest?.playerId;
       const required = highestId ? eligible.filter((id) => id !== highestId) : eligible;
       const allRequiredPassed = required.every((id) => a.passes.includes(id));
 
       if (allRequiredPassed) {
+        // 這裡只是改本 store 內的 primitive 與 array，不會引入 Proxy
         a.closed = true;
         game.phase = 'auction.closing';
         game.appendLog(
@@ -72,6 +82,7 @@ export const useAuctionStore = defineStore('auction', {
     /**
      * 進入拍賣流程：抽一張牌，建立 AuctionState，phase='auction.bidding'
      * 若場上除主持人外皆無錢，直接進入 'auction.closing'
+     * ★ 寫入 store 前一律 clean()
      */
     enterBidding(): void {
       const game = useGameStore();
@@ -80,16 +91,17 @@ export const useAuctionStore = defineStore('auction', {
       if (!game.hostId) throw new Error('Host not set');
       const auctioneerId = game.turnOwnerId;
 
-      // Phase 2：game.drawCardForAuction 需要 actorId（Host）
-      const card = game.drawCardForAuction(game.hostId);
+      // 依 README：帶參數 auctioneerId
+      const card = game.drawCardForAuction(auctioneerId);
 
       const next: AuctionState = {
         auctioneerId,
         card,
-        passes: [] as string[],
+        passes: [],
         closed: false
       };
-      this.auction = JSON.parse(JSON.stringify(next)) as AuctionState;
+
+      this.auction = clean(next);
 
       game.phase = 'auction.bidding';
       game.appendLog(
@@ -109,6 +121,7 @@ export const useAuctionStore = defineStore('auction', {
 
     /**
      * 出價：只保留最高；同額則以 ts 先到先贏（不覆蓋既有最高）
+     * ★ 新 bid 先 clean 後再寫入 store
      */
     placeBid(playerId: string, moneyCardIds: string[], actionId: string): void {
       const game = useGameStore();
@@ -136,7 +149,7 @@ export const useAuctionStore = defineStore('auction', {
         (newBid.total === current.total && newBid.ts < current.ts);
 
       if (shouldReplace) {
-        a.highest = newBid;
+        a.highest = clean(newBid);
         game.appendLog(`出價：${bidder.name} ＠ ${total}`);
         this.maybeEnterClosing();
       }
@@ -144,6 +157,7 @@ export const useAuctionStore = defineStore('auction', {
 
     /**
      * 放棄出價：加入 passes；必要時進入結標
+     * ★ passes 為 string[]，純 JSON
      */
     passBid(playerId: string): void {
       const game = useGameStore();
@@ -185,6 +199,7 @@ export const useAuctionStore = defineStore('auction', {
      * 結算（Phase 2 僅 'award'）
      * - 一次性轉移資產（錢卡 / 動物卡），寫入 log
      * - phase='turn.end'，清空 auction 狀態
+     * ★ 不把 Game store 的任何物件寫回本 store；本 store 最後只設 null
      */
     settle(mode: 'award' | 'buyback'): void {
       const game = useGameStore();
@@ -224,7 +239,10 @@ export const useAuctionStore = defineStore('auction', {
         game.appendLog(`無人出價：主持人 ${seller.name} 取得 ${card.animal}`);
       }
 
+      // 結束本回合
       game.phase = 'turn.end';
+
+      // ★ 清空本 store 的拍賣狀態（不留下任何外部引用痕跡）
       this.auction = null;
     }
   }
