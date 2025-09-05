@@ -297,22 +297,44 @@ export interface Rules {
 * `services/broadcast.ts`（抽象層）
 
   ```ts
+  import type { MsgType, PayloadByType, Envelope } from '@/networking/protocol';
+
   export interface IBroadcast {
-    publish<T>(topic: string, payload: T): Promise<void>;
-    subscribe<T>(topic: string, handler: (payload: T) => void): () => void;
+    /**
+    * 上層只需提供 payload；adapter 會自動包成 Envelope 再送出。
+    * 可選 opts 讓 Host 廣播時帶上 actionId/stateVersion。
+    */
+    publish<T extends MsgType>(
+      type: T,
+      payload: PayloadByType[T],
+      opts?: { actionId?: string; stateVersion?: number }
+    ): Promise<void>;
+
+    /**
+    * 訂閱時 handler 一律接收 Envelope（非 payload-only）。
+    * Envelope 內含 senderId/ts/stateVersion 等，供驗證與去重。
+    */
+    subscribe<T extends MsgType>(
+      type: T,
+      handler: (envelope: Envelope<PayloadByType[T]>) => void
+    ): () => void;
+
+    /**
+    * Presence：id === clientId === playerId（Identity Contract）
+    */
     presence(): {
-      // 規範：presence 的 clientId 必須等於 playerId
       enter(meta: { playerId: string; name: string }): Promise<void>;
       leave(): Promise<void>;
       getMembers(): Promise<Array<{ id: string; data: { playerId: string; name: string } }>>;
     };
   }
+
   ```
 
 * `services/host-election.ts`
 
-  * `getHostId(members: Array<{ id: string }>): string` // 取 **字典序最小** playerId
-  * `shouldReelect(oldHostId: string, memberIds: string[]): boolean`
+  getHostId(members: Array<{ id: string }>): string | undefined; // 取 **字典序最小** playerId（無成員則 undefined）
+  shouldReelect(oldHostId: string, memberIds: string[]): boolean;
 
 ---
 
@@ -337,6 +359,24 @@ export interface Rules {
 * **只接受** `senderId === state.hostId` 的 `state.update`；`hostId` 未定時（setup 初期）暫信「當下最小 `playerId`」。
 * Host 每處理成功一個 action → `stateVersion++` → 廣播 **完整快照** `state.update`。
 * Client 僅在 `incoming.stateVersion > local.stateVersion` 時套用（自然抵禦錯序/重播）。
+事件處理統一規則：
+
+publish()：上層傳 payload，adapter 自動包成 Envelope。
+
+subscribe()：handler 一律接收 Envelope<Payload>；請用 envelope.senderId / envelope.actionId / envelope.stateVersion 做驗證與去重，只在需要時讀取 envelope.payload。
+
+// 訂閱快照（Envelope 版）
+broadcast.subscribe(Msg.State.Update, (env) => {
+  // 只信任 Host 的快照
+  if (env.senderId !== game.hostId) return;
+
+  const incoming = env.payload.state;
+  if (incoming.stateVersion <= game.stateVersion) return;
+
+  // 套用全量快照（確保是 plain object）
+  game.applySnapshot(incoming); // or: (game as any).$state = structuredClone(incoming)
+});
+
 
 ### 6.4 Channel
 
@@ -804,7 +844,7 @@ stateDiagram-v2
 **E. Proxy/序列化**
 
 * 廣播快照前建議 `structuredClone(gameState)`，避免 Vue/Pinia proxy 造成序列化異常。
-
+若使用 Pinia/Vue store，建議由 store 提供 toSnapshot(): GameState 取得 plain object；或在廣播前對 plain object 執行 structuredClone()，避免將 Proxy/循環參照丟入導致 DataCloneError。
 ---
 
 ## 快速啟動
