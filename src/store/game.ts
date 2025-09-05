@@ -143,15 +143,17 @@ export const useGameStore = defineStore('game', {
     /**
      * 依目前 players 名單建立起始資產、牌庫、回合擁有者（預設 host；若未鎖則取最小 id）。
      * 不切 phase；通常 dispatcher 會在之後呼叫 startTurn()。
-     * Host-only。
+     * Host-only（身分驗證由 dispatcher 保證；此處不再接 actorId）。
      */
-    setupGameFromCurrentPlayers(actorId: string): void {
-      assertHostGuard(this.$state, actorId);
+    setupGameFromCurrentPlayers(): void {
+      // Host 驗證統一留在 dispatcher；此處不再驗 actorId。
+      // assertHostGuard(this.$state, actorId);
 
       if (this.players.length === 0) {
         throw new Error('[game] cannot setup: no players');
       }
 
+      // 你原本的初始化邏輯保持不變
       this.players = bootstrapPlayersFromNames(this.players);
       this.deck = buildDeckFromRules();
       this.discard = [];
@@ -169,14 +171,7 @@ export const useGameStore = defineStore('game', {
       this.cow = null;
 
       this.appendLog('Game setup completed');
-      // stateVersion++ 交由 dispatcher
-    },
-
-    /** 切到回合選擇階段：turn.choice（Host-only） */
-    startTurn(actorId: string): void {
-      assertHostGuard(this.$state, actorId);
-      this.phase = 'turn.choice';
-      this.appendLog(`Turn start → owner=${this.turnOwnerId}`);
+      // stateVersion++ 仍由 host-dispatcher 控制
     },
 
     /**
