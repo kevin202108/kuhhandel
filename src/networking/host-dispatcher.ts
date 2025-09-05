@@ -24,7 +24,6 @@ export interface HostMutators {
     settle: (mode: 'award' | 'buyback') => void;
   };
   cow: {
-    startCowTrade: () => void;
     selectTarget: (targetPlayerId: string) => void;
     selectAnimal: (animal: Animal) => void;
     commitSecret: (playerId: string, moneyCardIds: string[]) => void;
@@ -170,7 +169,6 @@ export function mountHostDispatcher(
     if (!phaseIs('turn.choice')) return;
     if (!isTurnOwner(env.payload.playerId)) return;
 
-    mutate.cow.startCowTrade();
     mutate.game.appendLog(`ChooseCowTrade by ${env.payload.playerId}`);
     mutate.bumpStateVersion();
     void publishStateUpdate('chooseCowTrade');
