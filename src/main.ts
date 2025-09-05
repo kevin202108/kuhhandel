@@ -195,23 +195,55 @@ async function handleHostMigrationIfNeeded(): Promise<void> {
 
 /* ----------------------------- Host Dispatcher 掛/卸 ----------------------------- */
 
+// src/main.ts（替換 mountDispatcherIfHost 內傳入 mutate 的那段）
 function mountDispatcherIfHost(): void {
   if (game.hostId !== playerId) {
     unmountDispatcherIfMounted();
     return;
   }
   if (!unmountDispatcher) {
-    // 依你目前 host-dispatcher 的簽名（需要 4 參數）
+    const mutate = {
+      game: {
+        setupGameFromCurrentPlayers: () => game.setupGameFromCurrentPlayers(),
+        startTurn: () => game.startTurn(),
+        appendLog: (msg: string) => game.appendLog(msg)
+      },
+      auction: {
+        enterBidding: () => auction.enterBidding(),
+        placeBid: (pid: string, ids: string[], actionId: string) =>
+          auction.placeBid(pid, ids, actionId),
+        passBid: (pid: string) => auction.passBid(pid),
+        hostAward: () => auction.hostAward(),
+        hostBuyback: () => auction.hostBuyback(),
+        settle: (mode: 'award' | 'buyback') => auction.settle(mode)
+      },
+      cow: {
+        selectTarget: (targetPlayerId: string) => cow.selectTarget(targetPlayerId),
+        selectAnimal: (animal: import('@/types/game').Animal) => cow.selectAnimal(animal),
+        commitSecret: (pid: string, ids: string[]) => cow.commitSecret(pid, ids),
+        revealAndResolve: () => cow.revealAndResolve()
+      },
+      // 若你的 HostMutators 沒有 players/bumpStateVersion，就把這兩段移除
+      players: {
+        addOnSetup: (pid: string, name: string) => {
+          // 若 store 沒有這支，請移除此段並同步改 host-dispatcher
+          // 例如：game.addPlayerOnSetup(pid, name)
+        },
+        removeOnSetup: (pid: string) => {
+          // 若 store 沒有這支，請移除此段並同步改 host-dispatcher
+          // 例如：game.removePlayerOnSetup(pid)
+        }
+      },
+      bumpStateVersion: () => {
+        game.stateVersion += 1;
+      }
+    } as const;
+
     unmountDispatcher = mountHostDispatcher(
       broadcast,
       roomId,
       () => structured(game.$state),
-      {
-        // 將需要的 mutation 能力傳入（依你的 host-dispatcher 介面調整）
-        game,
-        auction,
-        cow
-      }
+      mutate
     );
   }
 }

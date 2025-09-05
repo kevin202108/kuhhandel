@@ -256,6 +256,15 @@ export const useGameStore = defineStore('game', {
       this.log.push(`${ts} - ${msg}`);
     },
 
+    /** 開始遊戲回合，設置 phase 為 'turn.choice' */
+    startTurn(): void {
+      if (this.phase !== 'setup' && this.phase !== 'turn.end') {
+        throw new Error(`[game] startTurn only allowed from setup or turn.end, current: ${this.phase}`);
+      }
+      this.phase = 'turn.choice';
+      this.appendLog('Turn started');
+    },
+
     /** 重置到 setup（保留玩家名單但清空資產；Host-only） */
     resetToSetup(actorId: string): void {
       assertHostGuard(this.$state, actorId);
