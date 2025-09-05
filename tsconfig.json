@@ -9,7 +9,7 @@
     "types": ["vite/client", "vitest", "node"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
+    "exactOptionalPropertyTypes": false,
     "noImplicitOverride": true,
     "useDefineForClassFields": true
   },
