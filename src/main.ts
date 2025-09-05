@@ -65,13 +65,15 @@ const cow = useCowStore();
 // 提供 selfId 給組件（hostId/phase 由 store 直接讀）
 app.provide('selfId', playerId);
 
+const broadcast = createBroadcast(roomId, playerId);
+
+// ⚠️ 這行你漏掉了
+app.provide('broadcast', broadcast);
+
 // 先掛 App（UI 會依 store 自動切換 Name/Lobby/Game）
 app.mount('#app');
 
 /* ----------------------------- 即時連線與 Presence ----------------------------- */
-
-const broadcast = createBroadcast(roomId, playerId);
-
 let unmountDispatcher: (() => void) | null = null;
 let hasAppliedStateOnce = false;
 

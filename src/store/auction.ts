@@ -89,7 +89,7 @@ export const useAuctionStore = defineStore('auction', {
         passes: [] as string[],
         closed: false
       };
-      this.auction = next;
+      this.auction = JSON.parse(JSON.stringify(next)) as AuctionState;
 
       game.phase = 'auction.bidding';
       game.appendLog(

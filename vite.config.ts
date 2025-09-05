@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import vue from '@vitejs/plugin-vue';
 import path from 'node:path';
-import pkg from './package.json' assert { type: 'json' };
+import pkg from './package.json';
 
 export default defineConfig({
   plugins: [vue()],
