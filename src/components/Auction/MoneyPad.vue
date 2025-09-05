@@ -22,20 +22,7 @@
         <span class="amount">{{ total }}</span>
       </div>
 
-      <div class="actions">
-        <button class="secondary" @click="emit('clear')" :disabled="selectedIds.length === 0">
-          清空選擇
-        </button>
 
-        <button
-          class="primary"
-          :disabled="selectedIds.length === 0 || total <= 0"
-          @click="onConfirm"
-          title="至少需要合計 > 0 才能確認出價"
-        >
-          確認（{{ total }}）
-        </button>
-      </div>
     </div>
   </div>
 </template>
