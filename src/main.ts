@@ -1,5 +1,5 @@
 // src/main.ts
-import { createApp, type App as VueApp } from 'vue';
+import { createApp, type App as VueApp, toRaw  } from 'vue';
 import { createPinia } from 'pinia';
 
 import App from './App.vue';
@@ -23,10 +23,11 @@ function normalizePlayerId(raw: string | null): string | null {
   const id = raw.trim().toLowerCase();
   return /^[a-z0-9_-]{1,24}$/.test(id) ? id : null;
 }
-
-function structured<T>(v: T): T {
-  // 避免 Pinia Proxy 序列化/比對問題
-  return structuredClone(v);
+// 取代原本 snapshot<T>(v) 的實作
+function snapshot<T>(v: T): T {
+  // 先把 Proxy 拆掉，再走 JSON 來確保純資料
+  // （所有 state 都應只包含可 JSON 化的值，符合 README Phase 2）
+  return JSON.parse(JSON.stringify(toRaw(v)));
 }
 
 async function listMemberIds(b: IBroadcast): Promise<string[]> {
@@ -135,8 +136,7 @@ async function shouldAcceptState(payload: PayloadByType[typeof Msg.State.Update]
 /* ----------------------------- 套用 Host 發來的快照 ----------------------------- */
 
 function applyFullSnapshot(payload: PayloadByType[typeof Msg.State.Update]): void {
-  const incoming = payload.state;
-  (game as unknown as { $state: typeof game.$state }).$state = structured(incoming);
+  (game as unknown as { $state: typeof game.$state }).$state = payload.state;
   hasAppliedStateOnce = true;
 }
 
@@ -154,7 +154,7 @@ async function tryLockHostAtSetup(): Promise<void> {
     game.setHostAtSetup(playerId);
     game.stateVersion += 1;
 
-    const payload: PayloadByType[typeof Msg.State.Update] = { state: structured(game.$state) };
+    const payload: PayloadByType[typeof Msg.State.Update] = { state: snapshot(game.$state) };
     await broadcast.publish(Msg.State.Update, payload);
 
     mountDispatcherIfHost(); // 成為 Host 後掛載 dispatcher
@@ -185,7 +185,7 @@ async function handleHostMigrationIfNeeded(): Promise<void> {
     const hostChangedPayload: PayloadByType[typeof Msg.System.HostChanged] = { newHostId };
     await broadcast.publish(Msg.System.HostChanged, hostChangedPayload);
 
-    const statePayload: PayloadByType[typeof Msg.State.Update] = { state: structured(game.$state) };
+    const statePayload: PayloadByType[typeof Msg.State.Update] = { state: snapshot(game.$state) };
     await broadcast.publish(Msg.State.Update, statePayload);
 
     mountDispatcherIfHost();
@@ -244,7 +244,7 @@ function mountDispatcherIfHost(): void {
     unmountDispatcher = mountHostDispatcher(
       broadcast,
       roomId,
-      () => structured(game.$state),
+      () => snapshot(game.$state),
       mutate
     );
   }
