@@ -79,7 +79,7 @@ const total = computed(() =>
 );
 
 // 放棄後禁用出價
-const canConfirm = computed(() => total.value > 0 && !hasPassed.value);
+const canConfirm = computed(() => !hasPassed.value);
 
 function onToggle(id: string) {
   if (hasPassed.value) return; // 放棄後忽略互動
