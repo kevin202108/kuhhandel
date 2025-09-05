@@ -261,9 +261,9 @@ const unsubscribeStateUpdate = broadcast.subscribe(Msg.State.Update, async (payl
   // 若我是 Host，自然不接受別人的快照（避免互踩）
   if (game.hostId === playerId) return;
 
-  if (!(await shouldAcceptState(payload))) return;
+  if (!(await shouldAcceptState(payload.payload))) return;
 
-  applyFullSnapshot(payload);
+  applyFullSnapshot(payload.payload);
 
   // 一旦換 Host（或我成為 Host），同步掛/卸 dispatcher
   mountDispatcherIfHost();
