@@ -96,7 +96,7 @@
           class="auction-col"
         >
           <AuctionBidderView
-            v-if="p.id === myId"
+            v-if="p.id === myId && myId !== auctioneerId"
             :self="p"
             :highest="game.auction?.highest"
             @place-bid="(ids:string[]) => onPlaceBid(p.id, ids)"
