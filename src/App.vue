@@ -52,13 +52,18 @@
     <section v-else-if="phase === 'turn.choice'" class="view turn-choice">
       <div class="panel">
         <h2>Choose Action ({{ activePlayer?.name }})</h2>
-        <TurnChoice
-          :canAuction="game.canChooseAuction"
-          :canCowTrade="game.canChooseCowTrade"
-          :isFirstRound="isFirstRound"
-          @choose-auction="onChooseAuction"
-          @choose-cow-trade="onChooseCowTrade"
-        />
+        <div v-if="myId === game.turnOwnerId">
+          <TurnChoice
+            :canAuction="game.canChooseAuction"
+            :canCowTrade="game.canChooseCowTrade"
+            :isFirstRound="isFirstRound"
+            @choose-auction="onChooseAuction"
+            @choose-cow-trade="onChooseCowTrade"
+          />
+        </div>
+        <div v-else class="muted">
+          Waiting for {{ activePlayer?.name }} to choose…
+        </div>
       </div>
     </section>
 
@@ -103,7 +108,8 @@
     <!-- Auction: Closing -->
     <section v-else-if="phase === 'auction.closing'" class="view auction">
       <h2>Auction: Closing</h2>
-      <div class="panel">
+      <!-- Only the host sees the actionable host panel -->
+      <div v-if="myId === game.hostId" class="panel">
         <AuctionHostView
           :highest="auction.auction?.highest"
           :canBuyback="canBuyback"
@@ -111,10 +117,17 @@
           @buyback="onHostBuyback"
         />
       </div>
+      <!-- Others see a compact, read-only summary -->
+      <div v-else class="panel compact-host">
+        <div class="muted">Waiting for host to settle…</div>
+        <div>
+          Highest: <strong>{{ auction.auction?.highest?.total ?? 0 }}</strong>
+          <span v-if="auction.auction?.highest">
+            by <code>{{ auction.auction?.highest?.playerId }}</code>
+          </span>
+        </div>
+      </div>
     </section>
-
-    <!-- Turn End -->
-    <section v-else-if="phase === 'turn.end'" class="view turn-end">
       <div class="panel">
         <h2>Turn End</h2>
         <p>Next player: <strong>{{ nextPlayerName }}</strong></p>
