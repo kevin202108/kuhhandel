@@ -192,7 +192,13 @@ export const useAuctionStore = defineStore('auction', {
       game.phase = 'turn.end';
       this.auction = null;
       this.syncGameAuction();
+
+      // Auto-advance to next turn without requiring a UI button
+      game.checkEndAndMaybeFinish();
+      if (game.phase !== 'game.end') {
+        game.rotateTurn();
+        game.startTurn();
+      }
     },
   },
 });
-

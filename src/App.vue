@@ -120,15 +120,7 @@
       </div>
     </section>
     <!-- Turn End -->
-    <section v-else-if="phase === 'turn.end'" class="view turn-end">
-      <div class="panel">
-        <h2>Turn End</h2>
-        <p>Next player: <strong>{{ nextPlayerName }}</strong></p>
-        <div class="actions">
-          <button class="primary" @click="nextTurn">Next Turn</button>
-        </div>
-      </div>
-    </section>
+    
 
     <!-- Game End -->
     <section v-else-if="phase === 'game.end'" class="view game-end">
