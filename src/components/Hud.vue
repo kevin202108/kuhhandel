@@ -20,6 +20,9 @@
               {{ p.name }}
               <small class="pid">(<code>{{ p.id }}</code>)</small>
             </div>
+            <div class="money-count">
+              錢卡張數: <strong>{{ p.moneyCards.length }}</strong>
+            </div>
             <div class="animals">
               <template v-for="a in animalOrder" :key="a">
                 <span v-if="p.animals[a] > 0" class="animal" :class="{ 'newly-awarded': isNewlyAwarded(p, a) }">
@@ -105,6 +108,7 @@ function isNewlyAwarded(p: Player, a: Animal): boolean {
 .pitem.active { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.3) inset; }
 .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .head .name { display: flex; align-items: center; gap: 6px; }
+.money-count { font-weight: 600; }
 .pid code { background: #4b5563; padding: 2px 6px; border-radius: 6px; color: #f9fafb; }
 .money { font-weight: 600; }
 .count { color: #9ca3af; font-weight: 400; margin-left: 4px; }
