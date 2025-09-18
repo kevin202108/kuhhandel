@@ -1,27 +1,27 @@
-<template>
+﻿<template>
   <div class="turn-choice">
-    <h2 class="title">選擇你的回合動作</h2>
+    <h2 class="title">Choose your action</h2>
     <div class="buttons">
       <button
         class="btn primary"
-        :disabled="!canAuction"
+        :disabled="!isMyTurn || !canAuction"
         @click="emit('choose-auction')"
       >
-        進入拍賣（Auction）
+        Enter Auction
       </button>
 
       <button
         class="btn"
-        :disabled="isFirstRound || !canCowTrade"
+        :disabled="!isMyTurn || isFirstRound || !canCowTrade"
         @click="emit('choose-cow-trade')"
         :title="cowDisabledTooltip"
       >
-        牛頭不對馬嘴（Cow Trade）
+        Cow Trade
       </button>
     </div>
 
-    <p v-if="isFirstRound" class="hint">首回合：只能進行拍賣，Cow Trade 禁用。</p>
-    <p v-else-if="!canCowTrade" class="hint">目前無法進行 Cow Trade（可能因為你沒有可出的錢）。</p>
+    <p v-if="isFirstRound" class="hint">First round: Auction only; Cow Trade disabled.</p>
+    <p v-else-if="!canCowTrade" class="hint">Cow Trade unavailable now.</p>
   </div>
 </template>
 
@@ -32,6 +32,7 @@ const props = defineProps<{
   canAuction: boolean;
   canCowTrade: boolean;
   isFirstRound: boolean;
+  isMyTurn?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -40,8 +41,9 @@ const emit = defineEmits<{
 }>();
 
 const cowDisabledTooltip = computed(() => {
-  if (props.isFirstRound) return '首回合不得進行 Cow Trade';
-  if (!props.canCowTrade) return '目前無法進行 Cow Trade';
+  if (!props.isMyTurn) return 'Not your turn';
+  if (props.isFirstRound) return 'First round: Auction only';
+  if (!props.canCowTrade) return 'Cow Trade not available';
   return '';
 });
 </script>

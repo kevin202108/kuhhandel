@@ -117,26 +117,27 @@ void (async function bootstrapPhase2() {
       // PlaceBid / PassBid (bidders only, not auctioneer)
       const offPlace = broadcast.subscribe(Msg.Action.PlaceBid, (env) => {
         if (!accept(env.type, env.senderId, env.actionId, env.ts)) return;
-        if (game.phase !== 'auction.bidding' || !auction.auction) return;
+        if (game.phase !== 'auction.bidding' || !game.auction) return;
         const { playerId, moneyCardIds } = env.payload as any;
         if (!playerId || env.senderId !== playerId) return;
-        if (playerId === auction.auction.auctioneerId) return;
+        if (playerId === game.auction?.auctioneerId) return;
         auction.placeBid(playerId, moneyCardIds, env.actionId || `${env.senderId}-${Date.now()}`);
       });
       const offPass = broadcast.subscribe(Msg.Action.PassBid, (env) => {
         if (!accept(env.type, env.senderId, env.actionId, env.ts)) return;
-        if (game.phase !== 'auction.bidding' || !auction.auction) return;
+        if (game.phase !== 'auction.bidding' || !game.auction) return;
         const { playerId } = env.payload as any;
         if (!playerId || env.senderId !== playerId) return;
-        if (playerId === auction.auction.auctioneerId) return;
+        if (playerId === game.auction?.auctioneerId) return;
         auction.passBid(playerId);
       });
 
       // HostAward (host-only)
       const offAward = broadcast.subscribe(Msg.Action.HostAward, (env) => {
         if (!accept(env.type, env.senderId, env.actionId, env.ts)) return;
-        if (env.senderId !== game.hostId) return;
-        if (game.phase !== 'auction.closing' && game.phase !== 'auction.bidding') return;
+        if (game.phase !== 'auction.closing' || !game.auction) return;
+        const auctioneer = game.auction?.auctioneerId;
+        if (env.senderId !== auctioneer) return;
         auction.hostAward();
       });
       // Host: broadcast full snapshot on any mutation
@@ -248,5 +249,4 @@ function exposeDebugHelpers(isConnected: boolean) {
 // (removed) dev-only demo subscribe
 
 // (removed) dev-only demo publish
-
 

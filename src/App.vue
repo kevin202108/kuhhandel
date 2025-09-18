@@ -57,6 +57,7 @@
             :canAuction="game.canChooseAuction"
             :canCowTrade="game.canChooseCowTrade"
             :isFirstRound="isFirstRound"
+            :isMyTurn="myId === game.turnOwnerId"
             @choose-auction="onChooseAuction"
             @choose-cow-trade="onChooseCowTrade"
           />
@@ -76,24 +77,16 @@
           :key="p.id"
           class="auction-col"
         >
-          <!-- Host / Auctioneer -->
-          <AuctionHostView
-            v-if="p.id === auctioneerId && myId === game.hostId"
-            :highest="auction.auction?.highest"
-            :canBuyback="canBuyback"
-            @award="onHostAward"
-            @buyback="onHostBuyback"
-          />
-          <div v-else-if="p.id === auctioneerId" class="panel compact-host">
+          <!-- Auctioneer: show a compact, read-only card during bidding (no host panel needed) -->
+          <div v-if="p.id === auctioneerId" class="panel compact-host">
             <strong>{{ nameOf(p.id) }}</strong>
-            <div class="muted">Auctioneer (host-only controls)</div>
-            <div>Highest: <strong>{{ auction.auction?.highest?.total ?? 0 }}</strong></div>
+            <div class="muted">Auctioneer</div>
+            <div>Highest: <strong>{{ game.auction?.highest?.total ?? 0 }}</strong></div>
           </div>
-          <!-- Bidders -->
           <AuctionBidderView
             v-else-if="p.id === myId"
             :self="p"
-            :highest="auction.auction?.highest"
+            :highest="game.auction?.highest"
             @place-bid="(ids:string[]) => onPlaceBid(p.id, ids)"
             @pass="() => onPassBid(p.id)"
           />
@@ -108,26 +101,26 @@
     <!-- Auction: Closing -->
     <section v-else-if="phase === 'auction.closing'" class="view auction">
       <h2>Auction: Closing</h2>
-      <!-- Only the host sees the actionable host panel -->
-      <div v-if="myId === game.hostId" class="panel">
+      <div v-if="myId === auctioneerId" class="panel">
         <AuctionHostView
-          :highest="auction.auction?.highest"
+          :highest="game.auction?.highest"
           :canBuyback="canBuyback"
           @award="onHostAward"
           @buyback="onHostBuyback"
         />
       </div>
-      <!-- Others see a compact, read-only summary -->
       <div v-else class="panel compact-host">
         <div class="muted">Waiting for host to settle…</div>
         <div>
-          Highest: <strong>{{ auction.auction?.highest?.total ?? 0 }}</strong>
-          <span v-if="auction.auction?.highest">
-            by <code>{{ auction.auction?.highest?.playerId }}</code>
+          Highest: <strong>{{ game.auction?.highest?.total ?? 0 }}</strong>
+          <span v-if="game.auction?.highest">
+            by <code>{{ game.auction?.highest?.playerId }}</code>
           </span>
         </div>
       </div>
     </section>
+    <!-- Turn End -->
+    <section v-else-if="phase === 'turn.end'" class="view turn-end">
       <div class="panel">
         <h2>Turn End</h2>
         <p>Next player: <strong>{{ nextPlayerName }}</strong></p>
@@ -420,3 +413,5 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 
 
 <style scoped>.banner{margin:8px 16px;padding:8px 12px;border-radius:8px;background:#fff3cd;border:1px solid #ffecb5;color:#7a5d00;font-weight:600}</style>
+
+
