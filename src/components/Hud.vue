@@ -20,23 +20,13 @@
               {{ p.name }}
               <small class="pid">(<code>{{ p.id }}</code>)</small>
             </div>
-            <div class="money">
-              <template v-if="p.id === myId">
-                $ {{ moneyTotal(p) }}
-                <small class="count">({{ p.moneyCards.length }} cards)</small>
-              </template>
-              <template v-else>
-                <span class="muted">Hidden</span>
+            <div class="animals">
+              <template v-for="a in animalOrder" :key="a">
+                <span v-if="p.animals[a] > 0" class="animal">
+                  {{ short(a) }}: <strong>{{ p.animals[a] }}</strong>
+                </span>
               </template>
             </div>
-          </div>
-
-          <div class="row animals">
-            <template v-for="a in animalOrder" :key="a">
-              <span class="animal" :class="{ zero: !p.animals[a] }">
-                {{ short(a) }}: <strong>{{ p.animals[a] || 0 }}</strong>
-              </span>
-            </template>
           </div>
         </li>
       </ul>
@@ -72,16 +62,16 @@ function moneyTotal(p: Player) {
 
 function short(a: Animal): string {
   switch (a) {
-    case 'chicken': return 'Ch';
-    case 'goose': return 'Go';
-    case 'cat': return 'Ca';
-    case 'dog': return 'Do';
-    case 'sheep': return 'Sh';
-    case 'snake': return 'Sn';
-    case 'donkey': return 'Dn';
-    case 'pig': return 'Pg';
-    case 'cow': return 'Cw';
-    case 'horse': return 'Ho';
+    case 'chicken': return '雞';
+    case 'goose': return '鵝';
+    case 'cat': return '貓';
+    case 'dog': return '狗';
+    case 'sheep': return '羊';
+    case 'snake': return '蛇';
+    case 'donkey': return '驢';
+    case 'pig': return '豬';
+    case 'cow': return '牛';
+    case 'horse': return '馬';
   }
 }
 </script>
@@ -112,7 +102,7 @@ function short(a: Animal): string {
 .pid code { background: #eef2f7; padding: 2px 6px; border-radius: 6px; }
 .money { font-weight: 600; }
 .count { color: #6b7280; font-weight: 400; margin-left: 4px; }
-.animals { margin-top: 6px; flex-wrap: wrap; gap: 8px; }
+.animals { display: flex; gap: 8px; }
 .animal { font-variant-numeric: tabular-nums; background: #fff; border: 1px solid #e5e7eb; padding: 2px 6px; border-radius: 8px; }
 .animal.zero { opacity: 0.55; }
 .dot { width: 8px; height: 8px; border-radius: 9999px; background: #d1d5db; display: inline-block; }
