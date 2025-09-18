@@ -55,8 +55,8 @@ const total = computed(() =>
 );
 
 function onConfirm() {
-  // UI guard：不送出 0 元出價
-  if (props.selectedIds.length === 0 || total.value <= 0) return;
+  // UI guard：不送出空選擇
+  if (props.selectedIds.length === 0) return;
   emit('confirm', props.selectedIds);
 }
 

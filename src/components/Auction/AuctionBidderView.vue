@@ -78,8 +78,8 @@ const total = computed(() =>
     .reduce<number>((a, b) => a + (b ?? 0), 0)
 );
 
-// 放棄後禁用出價
-const canConfirm = computed(() => !hasPassed.value);
+// 放棄後禁用出價，且必須選擇至少一張錢卡
+const canConfirm = computed(() => !hasPassed.value && selectedIds.value.length > 0);
 
 function onToggle(id: string) {
   if (hasPassed.value) return; // 放棄後忽略互動
