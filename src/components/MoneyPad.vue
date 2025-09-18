@@ -102,9 +102,11 @@ function shortId(id: string) {
   font-size: 11px;
 }
 .card.selected {
-  border-color: #155eef;
-  box-shadow: 0 0 0 3px #165dff40 inset;
-  background: #165dff30;
+  border-color: #10b981;
+  box-shadow: 0 0 0 4px #10b98140 inset;
+  background: linear-gradient(135deg, #10b98140 0%, #14b8a640 100%);
+  transform: scale(1.05);
+  border-width: 2px;
 }
 .card:active {
   transform: translateY(1px);

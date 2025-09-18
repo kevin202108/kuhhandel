@@ -21,6 +21,9 @@
         @clear="onClear"
         @confirm="onConfirm"
       />
+      <div class="selection-summary" v-if="selectedIds.length > 0">
+        選中 {{ selectedIds.length }} 張錢卡，總額 {{ total }}
+      </div>
     </section>
 
     <footer class="footer">
@@ -154,6 +157,19 @@ function onPass() {
   border-radius: 12px;
   padding: 10px;
   background: #374151;
+}
+
+.selection-summary {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #065f46 0%, #064e3b 100%);
+  border: 1px solid #10b981;
+  border-radius: 8px;
+  color: #6ee7b7;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 .footer {
   display: grid;
