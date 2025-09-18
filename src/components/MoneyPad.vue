@@ -10,7 +10,6 @@
         :aria-pressed="selectedIdsSet.has(card.id)"
       >
         <span class="value">{{ card.value }}</span>
-        <small class="id">{{ shortId(card.id) }}</small>
       </button>
 
       <p v-if="!moneyCards.length" class="empty">你沒有可用的錢卡</p>
