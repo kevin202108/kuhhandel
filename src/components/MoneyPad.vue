@@ -77,32 +77,34 @@ function shortId(id: string) {
   gap: 8px;
 }
 .card {
-  border: 1px solid #d0d5dd;
+  border: 1px solid #4b5563;
   border-radius: 10px;
-  background: #fff;
+  background: #374151;
   padding: 10px 8px;
   cursor: pointer;
   display: grid;
   gap: 4px;
   text-align: center;
   transition: box-shadow 0.15s ease, transform 0.05s ease, border-color 0.15s ease;
+  color: #f9fafb;
 }
 .card .value {
   font-size: 18px;
   font-weight: 800;
   letter-spacing: 0.2px;
+  color: #ffffff;
 }
 /* .card.zero .value {
   color: #64748b;
 } */
 .card .id {
-  color: #6b7280;
+  color: #9ca3af;
   font-size: 11px;
 }
 .card.selected {
   border-color: #155eef;
-  box-shadow: 0 0 0 3px #165dff22 inset;
-  background: #165dff0d;
+  box-shadow: 0 0 0 3px #165dff40 inset;
+  background: #165dff30;
 }
 .card:active {
   transform: translateY(1px);

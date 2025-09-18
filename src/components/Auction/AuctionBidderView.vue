@@ -116,6 +116,10 @@ function onPass() {
 .bidder {
   display: grid;
   gap: 12px;
+  background: #1f2937;
+  color: #f9fafb;
+  border-radius: 12px;
+  padding: 12px;
 }
 .header {
   display: grid;
@@ -125,28 +129,30 @@ function onPass() {
   margin: 0;
   font-size: 16px;
   font-weight: 800;
+  color: #ffffff;
 }
 .highest {
   font-size: 14px;
-  color: #111827;
+  color: #d1d5db;
 }
 .highest.none {
-  color: #6b7280;
+  color: #9ca3af;
 }
 .amount {
   font-variant-numeric: tabular-nums;
   font-weight: 800;
   margin-left: 4px;
+  color: #ffffff;
 }
 .desc {
-  color: #6b7280;
+  color: #9ca3af;
   margin-left: 6px;
 }
 .pad {
-  border: 1px dashed #e5e7eb;
+  border: 1px dashed #4b5563;
   border-radius: 12px;
   padding: 10px;
-  background: #fafafa;
+  background: #374151;
 }
 .footer {
   display: grid;
@@ -156,6 +162,7 @@ function onPass() {
 }
 .you {
   font-weight: 700;
+  color: #f9fafb;
 }
 .actions {
   display: grid;
@@ -174,9 +181,10 @@ button.ghost {
   cursor: pointer;
   transition: transform 0.05s ease, opacity 0.2s ease, box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   border: 1px solid transparent;
+  color: #ffffff;
 }
 button.primary {
-  color: #fff;
+  color: #ffffff;
   background: #155eef;
   border-color: #155eef;
 }
@@ -185,16 +193,19 @@ button.primary:disabled {
   cursor: not-allowed;
 }
 button.secondary {
-  background: #fff;
-  border-color: #d0d5dd;
+  background: #374151;
+  border-color: #4b5563;
+  color: #f9fafb;
 }
 button.secondary:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+  color: #9ca3af;
 }
 button.ghost {
   background: transparent;
-  border-color: #e5e7eb;
+  border-color: #4b5563;
+  color: #d1d5db;
 }
 button:not(:disabled):active {
   transform: translateY(1px);
@@ -202,9 +213,9 @@ button:not(:disabled):active {
 
 /* 放棄後的視覺狀態（顯眼） */
 .pass-btn.passed {
-  background: #fee2e2;       /* 紅色淡底 */
-  border-color: #fecaca;
-  color: #991b1b;
+  background: #7f1d1d;       /* 紅色深底 */
+  border-color: #dc2626;
+  color: #fecaca;
   cursor: not-allowed;
 }
 .pass-btn.passed:disabled {
@@ -218,9 +229,9 @@ button:not(:disabled):active {
   border-radius: 8px;
   font-weight: 700;
   font-size: 13px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
+  background: #7f1d1d;
+  border: 1px solid #dc2626;
+  color: #fca5a5;
 }
 
 /* 整卡片淡化但仍可閱讀（可選） */

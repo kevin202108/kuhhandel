@@ -78,10 +78,11 @@ function short(a: Animal): string {
 
 <style scoped>
 .hud {
-  border: 1px solid #e5e7eb;
+  border: 1px solid #4b5563;
   border-radius: 12px;
   padding: 12px;
-  background: #fff;
+  background: #1f2937;
+  color: #f9fafb;
   display: grid;
   row-gap: 14px;
 }
@@ -91,22 +92,22 @@ function short(a: Animal): string {
   align-items: baseline;
   gap: 8px;
 }
-.phase .label { color: #6b7280; }
-.deck strong, .phase strong { font-weight: 700; }
-.players h4, .log h4 { margin: 0 0 6px; font-size: 14px; color: #374151; }
+.phase .label { color: #9ca3af; }
+.deck strong, .phase strong { font-weight: 700; color: #ffffff; }
+.players h4, .log h4 { margin: 0 0 6px; font-size: 14px; color: #d1d5db; }
 .plist { list-style: none; padding: 0; margin: 0; display: grid; row-gap: 10px; }
-.pitem { border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px; background: #f9fafb; }
-.pitem.active { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15) inset; }
+.pitem { border: 1px solid #4b5563; border-radius: 10px; padding: 8px; background: #374151; color: #f9fafb; }
+.pitem.active { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.3) inset; }
 .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .head .name { display: flex; align-items: center; gap: 6px; }
-.pid code { background: #eef2f7; padding: 2px 6px; border-radius: 6px; }
+.pid code { background: #4b5563; padding: 2px 6px; border-radius: 6px; color: #f9fafb; }
 .money { font-weight: 600; }
-.count { color: #6b7280; font-weight: 400; margin-left: 4px; }
+.count { color: #9ca3af; font-weight: 400; margin-left: 4px; }
 .animals { display: flex; gap: 8px; }
-.animal { font-variant-numeric: tabular-nums; background: #fff; border: 1px solid #e5e7eb; padding: 2px 6px; border-radius: 8px; }
+.animal { font-variant-numeric: tabular-nums; background: #1f2937; border: 1px solid #4b5563; padding: 2px 6px; border-radius: 8px; color: #f9fafb; }
 .animal.zero { opacity: 0.55; }
-.dot { width: 8px; height: 8px; border-radius: 9999px; background: #d1d5db; display: inline-block; }
+.dot { width: 8px; height: 8px; border-radius: 9999px; background: #6b7280; display: inline-block; }
 .dot.on { background: #10b981; }
-.loglist { margin: 0; padding-left: 18px; }
-.muted { color: #6b7280; font-style: italic; }
+.loglist { margin: 0; padding-left: 18px; color: #f9fafb; }
+.muted { color: #9ca3af; font-style: italic; }
 </style>

@@ -96,10 +96,11 @@ const buybackDisabledReason = computed<string>(() => {
 
 <style scoped>
 .host-panel {
-  border: 1px solid #e5e7eb;
+  border: 1px solid #4b5563;
   border-radius: 12px;
   padding: 12px;
-  background: #fff;
+  background: #1f2937;
+  color: #f9fafb;
   display: grid;
   row-gap: 10px;
 }
@@ -112,28 +113,32 @@ const buybackDisabledReason = computed<string>(() => {
 .host-header h3 {
   margin: 0;
   font-size: 16px;
+  color: #ffffff;
 }
 .hint {
-  color: #6b7280;
+  color: #9ca3af;
 }
 .highest .price {
   font-size: 14px;
   margin-bottom: 2px;
+  color: #d1d5db;
 }
 .amount {
   font-size: 18px;
+  color: #ffffff;
 }
 .meta {
-  color: #4b5563;
+  color: #a1a1aa;
   font-size: 12px;
 }
 .pid {
-  background: #f3f4f6;
+  background: #374151;
   padding: 1px 6px;
   border-radius: 6px;
+  color: #f9fafb;
 }
 .no-bid {
-  color: #6b7280;
+  color: #9ca3af;
   font-style: italic;
 }
 .actions {
@@ -143,10 +148,11 @@ const buybackDisabledReason = computed<string>(() => {
 .btn {
   padding: 8px 12px;
   border-radius: 10px;
-  border: 1px solid #d1d5db;
-  background: #f9fafb;
+  border: 1px solid #4b5563;
+  background: #374151;
   cursor: pointer;
   font-size: 14px;
+  color: #f9fafb;
 }
 .btn[disabled] {
   opacity: 0.5;
@@ -159,10 +165,11 @@ const buybackDisabledReason = computed<string>(() => {
 }
 .rules summary {
   cursor: pointer;
-  color: #374151;
+  color: #d1d5db;
 }
 .rules ul {
   margin: 6px 0 0;
   padding-left: 20px;
+  color: #f9fafb;
 }
 </style>
