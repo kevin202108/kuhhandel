@@ -22,7 +22,7 @@
             </div>
             <div class="animals">
               <template v-for="a in animalOrder" :key="a">
-                <span v-if="p.animals[a] > 0" class="animal">
+                <span v-if="p.animals[a] > 0" class="animal" :class="{ 'newly-awarded': isNewlyAwarded(p, a) }">
                   {{ short(a) }}: <strong>{{ p.animals[a] }}</strong>
                 </span>
               </template>
@@ -52,6 +52,7 @@ const props = defineProps<{
   phase: Phase;
   log: string[];
   myId?: string;
+  lastAwarded?: { playerId: string; animal: Animal } | null;
 }>();
 
 const animalOrder: Animal[] = ['chicken','goose','cat','dog','sheep','snake','donkey','pig','cow','horse'];
@@ -73,6 +74,10 @@ function short(a: Animal): string {
     case 'cow': return '牛';
     case 'horse': return '馬';
   }
+}
+
+function isNewlyAwarded(p: Player, a: Animal): boolean {
+  return props.lastAwarded?.playerId === p.id && props.lastAwarded.animal === a;
 }
 </script>
 
@@ -106,6 +111,20 @@ function short(a: Animal): string {
 .animals { display: flex; gap: 8px; }
 .animal { font-variant-numeric: tabular-nums; background: #1f2937; border: 1px solid #4b5563; padding: 2px 6px; border-radius: 8px; color: #f9fafb; }
 .animal.zero { opacity: 0.55; }
+.newly-awarded {
+  background: #fef3f2;
+  color: #dc2626;
+  border-color: #dc2626;
+  animation: award-flash 2s ease-in-out;
+}
+@keyframes award-flash {
+  0% { transform: scale(1); background: #fef3f2; }
+  20% { background: #fee2e2; transform: scale(1.1); }
+  40% { background: #fecaca; }
+  60% { background: #fca5a5; }
+  80% { background: #f87171; }
+  100% { transform: scale(1); background: #fef3f2; }
+}
 .dot { width: 8px; height: 8px; border-radius: 9999px; background: #6b7280; display: inline-block; }
 .dot.on { background: #10b981; }
 .loglist { margin: 0; padding-left: 18px; color: #f9fafb; }

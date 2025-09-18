@@ -59,6 +59,7 @@ export interface GameState {
   // Phase 2: Host authority owner for this room. Determined via presence/election.
   hostId?: string;
   stateVersion: number;     // Host 每次更新 +1
+  lastAwarded: { playerId: string; animal: Animal } | null; // 追蹤最近獲得的動物
 }
 
 // 由 services/rules.ts 輸出常數內容

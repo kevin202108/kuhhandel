@@ -80,6 +80,8 @@ export const useAuctionStore = defineStore('auction', {
       const auctioneerId = game.turnOwnerId;
       const card = game.drawCardForAuction();
 
+      game.lastAwarded = null; // 清除上次的獎勵記錄
+
       this.auction = {
         auctioneerId,
         card,
@@ -183,9 +185,11 @@ export const useAuctionStore = defineStore('auction', {
         });
         seller.moneyCards.push(...moved);
         buyer.animals[card.animal] = (buyer.animals[card.animal] ?? 0) + 1;
+        game.lastAwarded = { playerId: buyer.id, animal: card.animal };
         game.appendLog(`Award: ${buyer.name} pays ${highest.total} for ${card.animal}.`);
       } else {
         seller.animals[card.animal] = (seller.animals[card.animal] ?? 0) + 1;
+        game.lastAwarded = { playerId: seller.id, animal: card.animal };
         game.appendLog(`No bids: auctioneer ${seller.name} takes ${card.animal}.`);
       }
 

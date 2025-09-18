@@ -8,6 +8,7 @@
         :deckCount="deckCount"
         :phase="phase"
         :log="game.log"
+        :lastAwarded="game.lastAwarded"
       />
     </header>
     <div v-if="hostChangedMsg" class="banner">{{ hostChangedMsg }}</div>

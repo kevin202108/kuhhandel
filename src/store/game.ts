@@ -154,6 +154,7 @@ export const useGameStore = defineStore('game', {
     log: [],
     hostId: '',
     stateVersion: 0,
+    lastAwarded: null,
   }),
 
   getters: {
