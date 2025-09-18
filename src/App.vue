@@ -236,8 +236,15 @@ const isFirstRound = computed(() => {
     return counts.reduce((a, b) => a + (b || 0), 0) === 0;
   });
 });
-const auctioneerId = computed(() => auction.auction?.auctioneerId ?? game.turnOwnerId);
-const canBuyback = computed(() => auction.canAuctioneerBuyback);
+const auctioneerId = computed(() => game.auction?.auctioneerId ?? game.turnOwnerId);
+const canBuyback = computed(() => {
+  // 從 game.auction 檢查買回條件，因為 auction store 可能沒有同步
+  if (!game.auction?.highest) return false;
+  const auctioneer = game.players.find(p => p.id === game.auction!.auctioneerId);
+  if (!auctioneer) return false;
+  const totalMoney = auctioneer.moneyCards.reduce((sum, card) => sum + card.value, 0);
+  return totalMoney >= game.auction.highest.total;
+});
 const nextPlayerName = computed(() => {
   const nowIdx = players.value.findIndex(p => p.id === game.turnOwnerId);
   const next = players.value[(nowIdx + 1) % players.value.length];

@@ -182,36 +182,106 @@ export const useAuctionStore = defineStore('auction', {
 
     hostBuyback(moneyCardIds: string[], actionId: string) {
       const game = useGameStore();
-      if (!this.auction || game.phase !== 'auction.closing') {
-        console.log('❌ 買回失敗: 狀態不正確', { auction: !!this.auction, phase: game.phase });
+      if (game.phase !== 'auction.closing') {
+        console.log('❌ 買回失敗: 階段不正確', { phase: game.phase });
+        return;
+      }
+
+      // 使用 game.auction 而不是 auction store，因為auction store可能沒有同步
+      const auctionData = game.auction;
+      if (!auctionData || !auctionData.highest) {
+        console.log('❌ 買回失敗: auction 數據不完整', {
+          auctionData存在: !!auctionData,
+          highest存在: !!(auctionData?.highest)
+        });
         return;
       }
 
       // 驗證是主持人操作
       const myId = game.hostId || '';
-      if (myId !== this.auction.auctioneerId) {
-        console.log('❌ 買回失敗: 不是主持人', { myId, auctioneerId: this.auction.auctioneerId });
+      if (myId !== auctionData.auctioneerId) {
+        console.log('❌ 買回失敗: 不是主持人', { myId, auctioneerId: auctionData.auctioneerId });
         return;
       }
 
       // 驗證金額充足
-      const auctioneer = getPlayerById(game.$state, this.auction.auctioneerId);
+      const auctioneer = getPlayerById(game.$state, auctionData.auctioneerId);
       const payAmount = moneyTotalOf(auctioneer, moneyCardIds);
-      if (payAmount < this.auction.highest!.total) {
-        console.log('❌ 買回失敗: 金額不足', { payAmount, required: this.auction.highest!.total });
+      if (payAmount < auctionData.highest.total) {
+        console.log('❌ 買回失敗: 金額不足', { payAmount, required: auctionData.highest.total });
         return;
       }
 
       console.log('💸 執行買回操作:', {
         主持人: auctioneer.name,
         支付金額: payAmount,
-        買回的卡: this.auction.card?.animal,
-        賣家: getPlayerById(game.$state, this.auction.highest!.playerId).name
+        買回的卡: auctionData.card?.animal,
+        賣家: getPlayerById(game.$state, auctionData.highest.playerId).name
       });
 
-      this.auction.closed = true;
+      // 在 hostBuyback 中更新 auction store 狀態，然後呼叫 settle
+      if (this.auction) {
+        this.auction.closed = true;
+        this.syncGameAuction();
+      }
+
+      // 直接處理買回結算，不依賴 auction store
+      this.settleBuybackGameData(auctionData, moneyCardIds);
+    },
+
+    settleBuybackGameData(auctionData: AuctionState, moneyCardIds: string[]) {
+      const game = useGameStore();
+
+      const { card, highest, auctioneerId } = auctionData;
+      if (!card || !auctioneerId || !highest) throw new Error('Invalid auction data');
+
+      const auctioneer = getPlayerById(game.$state, auctioneerId);
+      const buyer = getPlayerById(game.$state, highest.playerId);
+      const payAmount = moneyTotalOf(auctioneer, moneyCardIds);
+
+      console.log('🔄 買回結算開始 (直接使用 game data):', {
+        買家: buyer.name,
+        賣家: auctioneer.name,
+        交易金額: payAmount,
+        動物卡: card.animal,
+        錢卡數量: moneyCardIds.length
+      });
+
+      // 移動錢卡從主持人到最高出價者
+      const idSet = new Set(moneyCardIds);
+      const moved: MoneyCard[] = [];
+      auctioneer.moneyCards = auctioneer.moneyCards.filter((m) => {
+        if (idSet.has(m.id)) {
+          moved.push(m);
+          return false;
+        }
+        return true;
+      });
+      buyer.moneyCards.push(...moved);
+
+      // 主持人獲得動物卡
+      auctioneer.animals[card.animal] = (auctioneer.animals[card.animal] ?? 0) + 1;
+
+      console.log('✅ 買回結算完成:', {
+        主持人獲得動物: `${auctioneer.name} -> +1 ${card.animal}`,
+        買家獲得金錢: `${buyer.name} -> +${payAmount}`,
+        動物卡分配後: auctioneer.animals,
+        金錢轉移: `${moneyCardIds.length}張錢卡`
+      });
+
+      game.appendLog(`Buyback: ${auctioneer.name} buys back ${card.animal} for ${payAmount}.`);
+
+      // 結束拍賣並進入下一輪
+      game.phase = 'turn.end';
+      this.auction = null;
       this.syncGameAuction();
-      this.settle('buyback', moneyCardIds);
+
+      // Auto-advance to next turn without requiring a UI button
+      game.checkEndAndMaybeFinish();
+      if (game.phase === 'turn.end') {
+        game.rotateTurn();
+        game.startTurn();
+      }
     },
 
     settle(mode: 'award' | 'buyback', moneyCardIds?: string[]) {
