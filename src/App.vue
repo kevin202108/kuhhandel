@@ -73,12 +73,17 @@
         >
           <!-- Host / Auctioneer -->
           <AuctionHostView
-            v-if="p.id === auctioneerId"
+            v-if="p.id === auctioneerId && myId === game.hostId"
             :highest="auction.auction?.highest"
             :canBuyback="canBuyback"
             @award="onHostAward"
             @buyback="onHostBuyback"
           />
+          <div v-else-if="p.id === auctioneerId" class="panel compact-host">
+            <strong>{{ nameOf(p.id) }}</strong>
+            <div class="muted">Auctioneer (host-only controls)</div>
+            <div>Highest: <strong>{{ auction.auction?.highest?.total ?? 0 }}</strong></div>
+          </div>
           <!-- Bidders -->
           <AuctionBidderView
             v-else-if="p.id === myId"
@@ -395,6 +400,9 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 }
 .compact-bidder { padding: 8px; }
 .muted { color: #6b7280; font-size: 12px; }
+
+.compact-host { padding: 8px; }
+
 </style>
 
 
