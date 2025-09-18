@@ -2,7 +2,7 @@
   <div class="money-pad">
     <div class="cards">
       <button
-        v-for="card in moneyCards"
+        v-for="card in sortedMoneyCards"
         :key="card.id"
         class="card"
         :class="{ selected: selectedIdsSet.has(card.id), zero: card.value === 0 }"
@@ -43,6 +43,10 @@ const emit = defineEmits<{
 }>();
 
 const selectedIdsSet = computed(() => new Set(props.selectedIds));
+
+const sortedMoneyCards = computed(() =>
+  props.moneyCards.slice().sort((a, b) => a.value - b.value)
+);
 
 const total = computed(() =>
   props.selectedIds
