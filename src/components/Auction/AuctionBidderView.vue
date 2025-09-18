@@ -1,7 +1,7 @@
 <template>
   <div class="bidder" :class="{ 'is-passed': hasPassed }">
     <header class="header">
-      <h3 class="title">投標者視圖</h3>
+      <h3 class="title">你持有的金錢卡</h3>
       <div class="highest" v-if="highest">
         目前最高價：
         <strong class="amount">{{ highest.total }}</strong>
