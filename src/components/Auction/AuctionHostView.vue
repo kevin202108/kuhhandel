@@ -5,6 +5,10 @@
       <small class="hint">結標、或（條件允許時）進行買回</small>
     </header>
 
+    <div class="auctioneer-info">
+      主持人持有金錢： <strong class="amount">{{ auctioneerTotalMoney }}</strong>
+    </div>
+
     <div class="highest">
       <template v-if="highest">
         <div class="price">
@@ -39,7 +43,7 @@
         @click="onBuyback"
         :title="buybackDisabledReason"
       >
-        主持人買回（支付大於最高出價）
+        主持人買回（支付大於等於最高出價）
       </button>
     </div>
 
@@ -57,7 +61,7 @@
       <div class="dialog-overlay" @click="cancelBuyback"></div>
       <div class="dialog-content">
         <h4>確認買回</h4>
-        <p>選擇錢卡支付給最高出價者（需要大於 {{ highest?.total }}元）</p>
+        <p>選擇錢卡支付給最高出價者（需要大於等於 {{ highest?.total }}元）</p>
 
         <MoneyPad
           :money-cards="auctioneerMoneyCards"
@@ -100,20 +104,83 @@ const showBuybackDialog = ref(false);
 const selectedMoneyCardIds = ref<string[]>([]);
 
 const auctioneerMoneyCards = computed(() => {
-  if (!auction.auction?.auctioneerId) return [];
-  const auctioneer = game.players.find(p => p.id === auction.auction!.auctioneerId);
-  return auctioneer?.moneyCards ?? [];
+  console.log('🔍 AuctionHostView 渲染檢查:', {
+    階段: game.phase,
+    我是主持人: props.highest !== undefined, // 有highest prop表示我是主持人
+    auction存在: !!auction.auction,
+    auction物件: auction.auction,
+    auctionStore狀態: {
+      auction: auction.auction,
+      canBuyback: auction.canAuctioneerBuyback
+    },
+    gameStore狀態: {
+      auction: game.auction,
+      phase: game.phase,
+      players: game.players.length
+    }
+  });
+
+  // 嘗試從 game.auction 獲取資料（因為可能auction store沒有同步）
+  const auctionData = game.auction || auction.auction;
+  const auctioneerId = auctionData?.auctioneerId;
+
+  console.log('🔍 最終使用的 auction 資料:', {
+    auctionData存在: !!auctionData,
+    auctioneerId: auctioneerId,
+    使用來源: game.auction ? 'game.auction' : 'auction.auction'
+  });
+
+  if (!auctioneerId) {
+    console.log('⚠️ 沒有 auctioneerId，無法獲取主持人錢卡');
+    return [];
+  }
+
+  const auctioneer = game.players.find(p => p.id === auctioneerId);
+  const moneyCards = auctioneer?.moneyCards ?? [];
+
+  // 添加詳細的錢卡資訊輸出
+  console.log('💳 主持人錢卡詳細資訊:', {
+    主持人ID: auctioneerId,
+    主持人名稱: auctioneer?.name,
+    錢卡數量: moneyCards.length,
+    錢卡列表: moneyCards.map(card => ({
+      ID: card.id,
+      價值: card.value
+    })),
+    總金額: moneyCards.reduce((sum, card) => sum + card.value, 0)
+  });
+
+  return moneyCards;
+});
+
+const auctioneerTotalMoney = computed(() => {
+  const total = auctioneerMoneyCards.value.reduce((sum: number, card) => sum + card.value, 0);
+  console.log('🎭 主持人總金額:', total);
+  return total;
 });
 
 const buybackTotal = computed(() => {
-  return selectedMoneyCardIds.value
+  const total = selectedMoneyCardIds.value
     .map(id => auctioneerMoneyCards.value.find(card => card.id === id)?.value ?? 0)
     .reduce((sum: number, value) => sum + value, 0);
+  console.log('🛒 選中錢卡總和:', {
+    選中錢卡數量: selectedMoneyCardIds.value.length,
+    總金額: total,
+    所需最低金額: props.highest?.total ?? 0,
+    是否滿足條件: total >= (props.highest?.total ?? 0)
+  });
+  return total;
 });
 
 const canConfirmBuyback = computed(() => {
-  return selectedMoneyCardIds.value.length > 0 &&
-         buybackTotal.value > (props.highest?.total ?? 0);
+  const canConfirm = selectedMoneyCardIds.value.length > 0 &&
+                    buybackTotal.value >= (props.highest?.total ?? 0);
+  console.log('✅ 買回確認狀態:', {
+    有選中錢卡: selectedMoneyCardIds.value.length > 0,
+    總金額足夠: buybackTotal.value >= (props.highest?.total ?? 0),
+    可以確認買回: canConfirm
+  });
+  return canConfirm;
 });
 
 function onAward() {
@@ -121,7 +188,18 @@ function onAward() {
 }
 
 function onBuyback() {
-  if (!props.highest || !props.canBuyback) return;
+  if (!props.highest || !props.canBuyback) {
+    console.log('❌ 無法開啟買回對話框:', {
+      有最高出價: !!props.highest,
+      可以買回: props.canBuyback,
+      原因是: !props.highest ? '沒有出價' : '主持人錢不足'
+    });
+    return;
+  }
+  console.log('🔓 開啟買回對話框:', {
+    最高出價: props.highest.total,
+    主持人總金額: auctioneerTotalMoney.value
+  });
   showBuybackDialog.value = true;
   selectedMoneyCardIds.value = [];
 }
@@ -187,6 +265,13 @@ const buybackDisabledReason = computed<string>(() => {
 }
 .hint {
   color: #6b7280;
+}
+.auctioneer-info {
+  font-size: 14px;
+  padding: 4px 8px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
 }
 .highest .price {
   font-size: 14px;

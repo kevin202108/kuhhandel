@@ -39,11 +39,25 @@ export const useAuctionStore = defineStore('auction', {
   getters: {
     canAuctioneerBuyback: (state) => {
       const game = useGameStore();
-      if (!state.auction?.highest) return false;
+      if (!state.auction?.highest) {
+        console.log('🔒 無法買回: 沒有最高出價', { highest: state.auction?.highest });
+        return false;
+      }
       const auctioneer = game.players.find(p => p.id === state.auction!.auctioneerId);
-      if (!auctioneer) return false;
+      if (!auctioneer) {
+        console.log('🔒 無法買回: 找不到主持人', { auctioneerId: state.auction.auctioneerId });
+        return false;
+      }
       const totalMoney = auctioneer.moneyCards.reduce((sum, card) => sum + card.value, 0);
-      return totalMoney > state.auction.highest.total;
+      const canBuyback = totalMoney >= state.auction.highest.total;
+      console.log('💰 買回條件檢查:', {
+        主持人ID: state.auction.auctioneerId,
+        主持人名稱: auctioneer.name,
+        主持人總金額: totalMoney,
+        最高出價: state.auction.highest.total,
+        可以買回: canBuyback
+      });
+      return canBuyback;
     },
   },
 
@@ -168,16 +182,32 @@ export const useAuctionStore = defineStore('auction', {
 
     hostBuyback(moneyCardIds: string[], actionId: string) {
       const game = useGameStore();
-      if (!this.auction || game.phase !== 'auction.closing') return;
+      if (!this.auction || game.phase !== 'auction.closing') {
+        console.log('❌ 買回失敗: 狀態不正確', { auction: !!this.auction, phase: game.phase });
+        return;
+      }
 
       // 驗證是主持人操作
       const myId = game.hostId || '';
-      if (myId !== this.auction.auctioneerId) return;
+      if (myId !== this.auction.auctioneerId) {
+        console.log('❌ 買回失敗: 不是主持人', { myId, auctioneerId: this.auction.auctioneerId });
+        return;
+      }
 
       // 驗證金額充足
       const auctioneer = getPlayerById(game.$state, this.auction.auctioneerId);
       const payAmount = moneyTotalOf(auctioneer, moneyCardIds);
-      if (payAmount <= this.auction.highest!.total) return;
+      if (payAmount < this.auction.highest!.total) {
+        console.log('❌ 買回失敗: 金額不足', { payAmount, required: this.auction.highest!.total });
+        return;
+      }
+
+      console.log('💸 執行買回操作:', {
+        主持人: auctioneer.name,
+        支付金額: payAmount,
+        買回的卡: this.auction.card?.animal,
+        賣家: getPlayerById(game.$state, this.auction.highest!.playerId).name
+      });
 
       this.auction.closed = true;
       this.syncGameAuction();
@@ -218,6 +248,14 @@ export const useAuctionStore = defineStore('auction', {
         const buyer = getPlayerById(game.$state, highest.playerId);
         const payAmount = moneyTotalOf(auctioneer, moneyCardIds);
 
+        console.log('🔄 買回結算開始:', {
+          買家: buyer.name,
+          賣家: auctioneer.name,
+          交易金額: payAmount,
+          動物卡: card.animal,
+          錢卡數量: moneyCardIds.length
+        });
+
         // 移動錢卡從主持人到最高出價者
         const idSet = new Set(moneyCardIds);
         const moved: MoneyCard[] = [];
@@ -232,6 +270,14 @@ export const useAuctionStore = defineStore('auction', {
 
         // 主持人獲得動物卡
         auctioneer.animals[card.animal] = (auctioneer.animals[card.animal] ?? 0) + 1;
+
+        console.log('✅ 買回結算完成:', {
+          主持人獲得動物: `${auctioneer.name} -> +1 ${card.animal}`,
+          買家獲得金錢: `${buyer.name} -> +${payAmount}`,
+          動物卡分配後: auctioneer.animals,
+          金錢轉移: `${moneyCardIds.length}張錢卡`
+        });
+
         game.appendLog(`Buyback: ${auctioneer.name} buys back ${card.animal} for ${payAmount}.`);
       }
 
