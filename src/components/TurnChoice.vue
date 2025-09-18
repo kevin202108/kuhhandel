@@ -53,11 +53,14 @@ const cowDisabledTooltip = computed(() => {
   display: grid;
   gap: 12px;
   padding: 12px;
+  background: #1f2937;
+  color: #f9fafb;
 }
 .title {
   margin: 0;
   font-size: 18px;
   font-weight: 700;
+  color: #ffffff;
 }
 .buttons {
   display: grid;
@@ -66,17 +69,19 @@ const cowDisabledTooltip = computed(() => {
 }
 .btn {
   appearance: none;
-  border: 1px solid #d0d5dd;
+  border: 1px solid #4b5563;
   border-radius: 10px;
-  background: #fff;
+  background: #374151;
   padding: 12px 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.05s ease, box-shadow 0.15s ease, opacity 0.2s ease;
+  transition: transform 0.05s ease, box-shadow 0.15s ease, opacity 0.2s ease, color 0.15s ease, border-color 0.15s ease;
+  color: #f9fafb;
 }
 .btn.primary {
   border-color: #155eef;
-  background: #165dff11;
+  background: #165dff30;
+  color: #ffffff;
 }
 .btn:disabled {
   cursor: not-allowed;
@@ -86,7 +91,7 @@ const cowDisabledTooltip = computed(() => {
   transform: translateY(1px);
 }
 .hint {
-  color: #6b7280;
+  color: #9ca3af;
   font-size: 13px;
   margin: 0;
 }
