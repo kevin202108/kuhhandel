@@ -9,7 +9,7 @@
         @click="emit('toggle', card.id)"
         :aria-pressed="selectedIdsSet.has(card.id)"
       >
-        <span class="value">{{ card.value }}</span>
+        <span class="value">🪙{{ card.value }}</span>
       </button>
 
       <p v-if="!moneyCards.length" class="empty">你沒有可用的錢卡</p>
