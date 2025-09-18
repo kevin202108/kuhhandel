@@ -53,7 +53,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import MoneyPad from './MoneyPad.vue';
+import MoneyPad from '../MoneyPad.vue';
 import type { Player, Bid } from '@/types/game';
 
 const props = defineProps<{

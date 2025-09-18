@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="app">
     <!-- Header / HUD -->
     <header class="app__header" v-if="phase !== 'setup'">
@@ -10,127 +10,148 @@
         :log="game.log"
       />
     </header>
+    <div v-if="hostChangedMsg" class="banner">{{ hostChangedMsg }}</div>
 
-    <!-- Setup Screen -->
+    <!-- Setup Screen (NameEntry / Lobby) -->
     <section v-if="phase === 'setup'" class="view setup">
       <h1>Multiplayer Auction + Cow Trade</h1>
-      <p class="sub">Phase 1：本地單機拍賣 MVP</p>
+      <p class="sub">Phase 2: Ably Multiplayer MVP</p>
 
-      <div class="players-setup">
-        <h2>玩家名單</h2>
-        <div class="player-row" v-for="(p, i) in playerInputs" :key="p.localId">
-          <input
-            v-model.trim="p.name"
-            :placeholder="`玩家 ${i + 1} 名稱`"
-            maxlength="16"
-          />
-          <button class="ghost" @click="removePlayer(i)" :disabled="playerInputs.length <= 2">刪除</button>
+      <!-- NameEntry when no ?player= given -->
+      <div v-if="!myId" class="panel">
+        <h2>Enter Your Name</h2>
+        <div class="players-setup">
+          <div class="player-row">
+            <input v-model.trim="nameInput" placeholder="your-name (a-z0-9_-)" maxlength="16" />
+            <button class="primary" :disabled="!canJoin" @click="joinRoom">Join</button>
+          </div>
+          <p class="hint">Adds ?player= to URL and reloads, then presence joins automatically.</p>
         </div>
+      </div>
 
+      <!-- Lobby when already joined -->
+      <div v-else class="panel">
+        <h2>Lobby (room: {{ roomId }})</h2>
+        <p class="hint">Host: <code>{{ hostIdLabel }}</code></p>
+        <ul class="plist">
+          <li v-for="m in members" :key="m.id">
+            <strong>{{ m.data?.name || m.id }}</strong> <code>({{ m.id }})</code>
+            <span v-if="m.id === hostIdLabel" class="badge">Host</span>
+            <span v-if="m.id === myId" class="badge">You</span>
+          </li>
+        </ul>
         <div class="setup-actions">
-          <button class="secondary" @click="addPlayer" :disabled="playerInputs.length >= 5">＋ 新增玩家</button>
-          <button class="primary" @click="startGame" :disabled="!canStartGame">開始遊戲</button>
+          <button class="secondary" @click="refreshPresence">Refresh</button>
+          <button class="primary" :disabled="!canStartOnline" @click="startGame">Start Game (Host)</button>
         </div>
-        <p class="hint">* 2–5 位玩家。開始後可從畫面上方 HUD 查看回合玩家與牌庫剩餘。</p>
+        <p class="hint">Requires at least 2 members; only Host can start.</p>
       </div>
     </section>
 
     <!-- Turn Choice -->
     <section v-else-if="phase === 'turn.choice'" class="view turn-choice">
       <div class="panel">
-        <h2>回合選擇（{{ activePlayer?.name }}）</h2>
-        <TurnChoice
-          :canAuction="game.canChooseAuction"
-          :canCowTrade="game.canChooseCowTrade"
-          :isFirstRound="isFirstRound"
-          @choose-auction="onChooseAuction"
-          @choose-cow-trade="onChooseCowTrade"
-        />
+        <h2>Choose Action ({{ activePlayer?.name }})</h2>
+        <div v-if="myId === game.turnOwnerId">
+          <TurnChoice
+            :canAuction="game.canChooseAuction"
+            :canCowTrade="game.canChooseCowTrade"
+            :isFirstRound="isFirstRound"
+            :isMyTurn="myId === game.turnOwnerId"
+            @choose-auction="onChooseAuction"
+            @choose-cow-trade="onChooseCowTrade"
+          />
+        </div>
+        <div v-else class="muted">
+          Waiting for {{ activePlayer?.name }} to choose…
+        </div>
       </div>
     </section>
 
     <!-- Auction: Bidding -->
     <section v-else-if="phase === 'auction.bidding'" class="view auction">
-      <h2>拍賣進行中</h2>
+      <h2>Auction: Bidding</h2>
       <div class="auction-grid">
         <div
           v-for="p in players"
           :key="p.id"
           class="auction-col"
         >
-          <!-- Host / Auctioneer -->
-          <AuctionHostView
-            v-if="p.id === auctioneerId"
-            :highest="auction.auction?.highest"
-            :canBuyback="canBuyback"
-            @award="onHostAward"
-            @buyback="onHostBuyback"
-          />
-          <!-- Bidders -->
+          <!-- Auctioneer: show a compact, read-only card during bidding (no host panel needed) -->
+          <div v-if="p.id === auctioneerId" class="panel compact-host">
+            <strong>{{ nameOf(p.id) }}</strong>
+            <div class="muted">Auctioneer</div>
+            <div>Highest: <strong>{{ game.auction?.highest?.total ?? 0 }}</strong></div>
+          </div>
           <AuctionBidderView
-            v-else
+            v-else-if="p.id === myId"
             :self="p"
-            :highest="auction.auction?.highest"
+            :highest="game.auction?.highest"
             @place-bid="(ids:string[]) => onPlaceBid(p.id, ids)"
             @pass="() => onPassBid(p.id)"
           />
+          <div v-else class="panel compact-bidder">
+            <strong>{{ p.name }}</strong>
+            <div class="muted">Bidding...</div>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- Auction: Closing（所有人 Pass 後由主持人結標） -->
+    <!-- Auction: Closing -->
     <section v-else-if="phase === 'auction.closing'" class="view auction">
-      <h2>拍賣結標</h2>
-      <div class="panel">
+      <h2>Auction: Closing</h2>
+      <div v-if="myId === auctioneerId" class="panel">
         <AuctionHostView
-          :highest="auction.auction?.highest"
+          :highest="game.auction?.highest"
           :canBuyback="canBuyback"
           @award="onHostAward"
           @buyback="onHostBuyback"
         />
       </div>
-    </section>
-
-    <!-- Turn End -->
-    <section v-else-if="phase === 'turn.end'" class="view turn-end">
-      <div class="panel">
-        <h2>回合結束</h2>
-        <p>下一位玩家：<strong>{{ nextPlayerName }}</strong></p>
-        <div class="actions">
-          <button class="primary" @click="nextTurn">開始下一回合</button>
+      <div v-else class="panel compact-host">
+        <div class="muted">Waiting for host to settle…</div>
+        <div>
+          Highest: <strong>{{ game.auction?.highest?.total ?? 0 }}</strong>
+          <span v-if="game.auction?.highest">
+            by <code>{{ game.auction?.highest?.playerId }}</code>
+          </span>
         </div>
       </div>
     </section>
+    <!-- Turn End -->
+    
 
     <!-- Game End -->
     <section v-else-if="phase === 'game.end'" class="view game-end">
       <div class="panel">
-        <h2>遊戲結束</h2>
+        <h2>Game Over</h2>
         <ol class="scores">
           <li v-for="s in finalScores" :key="s.playerId">
-            <strong>{{ nameOf(s.playerId) }}</strong>：{{ s.score }}
+            <strong>{{ nameOf(s.playerId) }}</strong>: {{ s.score }}
           </li>
         </ol>
         <div class="actions">
-          <button class="secondary" @click="resetToSetup">重新開始</button>
+          <button class="secondary" @click="resetToSetup">Restart</button>
         </div>
       </div>
     </section>
 
     <!-- Fallback -->
     <section v-else class="view">
-      <p>未知的階段：{{ phase }}</p>
+      <p>Unknown phase: {{ phase }}</p>
     </section>
 
     <div class="panel">
-      <button class="secondary" @click="endNowForDev">Dev：直接結束並計分</button>
+      <button class="secondary" @click="endNowForDev">Dev: End Now and Score</button>
     </div>
 
   </div>
+  
 </template>
 
 <script setup lang="ts">
-import { computed, reactive } from 'vue';
+import { computed, reactive, ref, onMounted, onUnmounted, watch } from 'vue';
 import Hud from '@/components/Hud.vue';
 import TurnChoice from '@/components/TurnChoice.vue';
 import AuctionBidderView from '@/components/Auction/AuctionBidderView.vue';
@@ -138,54 +159,78 @@ import AuctionHostView from '@/components/Auction/AuctionHostView.vue';
 
 import { useGameStore } from '@/store/game';
 import { useAuctionStore } from '@/store/auction';
+import broadcast from '@/services/broadcast';
+import { Msg } from '@/networking/protocol';
 import type { Phase, Player } from '@/types/game';
 import { newId } from '@/utils/id';
 
 const game = useGameStore();
 const auction = useAuctionStore();
 
-/** --------------------------
- * Setup：建立玩家清單
- * -------------------------- */
-type PlayerInput = { localId: string; name: string };
-const playerInputs = reactive<PlayerInput[]>([
-  { localId: newId(), name: 'Alice' },
-  { localId: newId(), name: 'Bob' }
-]);
+// Presence helpers (Phase 2)
+const url = new URL(location.href);
+const myId = (url.searchParams.get('player') ?? '').toLowerCase().trim();
+const roomId = (url.searchParams.get('room') ?? 'dev').toLowerCase().trim();
+type Member = { id: string; data?: { playerId: string; name: string } };
+const members = ref<Member[]>([]);
+async function refreshPresence() {
+  try { members.value = await broadcast.presence().getMembers(); } catch { /* ignore */ }
+}
+const hostIdLabel = computed(() => game.hostId || members.value.map(m => m.id).sort()[0] || '');
 
-const canStartGame = computed(() => {
-  const names = playerInputs.map(p => p.name.trim()).filter(Boolean);
-  // 不重名、2~5人
-  const unique = new Set(names);
-  return names.length >= 2 && names.length <= 5 && unique.size === names.length;
+// NameEntry data
+const nameInput = ref('');
+const ID_RE = /^[a-z0-9_-]{1,24}$/;
+const canJoin = computed(() => ID_RE.test(nameInput.value.trim().toLowerCase()));
+function joinRoom() {
+  if (!canJoin.value) return;
+  const n = nameInput.value.trim().toLowerCase();
+  const next = new URL(location.href);
+  next.searchParams.set('player', n);
+  location.href = next.toString();
+}
+
+// Start gating (Host only, >=2 members)
+const canStartOnline = computed(() => (hostIdLabel.value === myId) && members.value.length >= 2);
+
+// Host change banner
+const hostChangedMsg = ref<string | null>(null);
+let hostMsgTimer: number | null = null;
+watch(() => game.hostId, (newHost, oldHost) => {
+  if (oldHost && newHost && newHost !== oldHost) {
+    hostChangedMsg.value = `Host changed to ${newHost}`;
+    if (hostMsgTimer) window.clearTimeout(hostMsgTimer);
+    hostMsgTimer = window.setTimeout(() => { hostChangedMsg.value = null; hostMsgTimer = null; }, 3000);
+  }
 });
 
-function addPlayer() {
-  if (playerInputs.length >= 5) return;
-  playerInputs.push({ localId: newId(), name: `P${playerInputs.length + 1}` });
-}
-function removePlayer(idx: number) {
-  if (playerInputs.length <= 2) return;
-  playerInputs.splice(idx, 1);
-}
+onMounted(() => {
+  if (game.phase === 'setup') void refreshPresence();
+  const t = window.setInterval(() => { if (game.phase === 'setup') void refreshPresence(); }, 1200);
+  (window as any).__presenceTimer = t;
+});
+onUnmounted(() => {
+  const t = (window as any).__presenceTimer as number | undefined;
+  if (t) window.clearInterval(t);
+});
+
+/** --------------------------
+ * Setup: Start game (host-only, uses presence)
+ * -------------------------- */
 function startGame() {
-  const players = playerInputs.map((p, i) => ({
-    id: `p${i + 1}`,
-    name: p.name.trim() || `P${i + 1}`
-  }));
-  game.setupGame(players);
-  game.startTurn();
+  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+  void broadcast.publish(Msg.Action.StartGame, { playerId: myId });
 }
 
 /** --------------------------
- * 讀取狀態與衍生資料
+ * Derived state
  * -------------------------- */
 const phase = computed<Phase>(() => game.phase);
 const players = computed<Player[]>(() => game.players);
 const deckCount = computed(() => game.deck.length);
 const activePlayer = computed<Player | undefined>(() => game.activePlayer);
 const isFirstRound = computed(() => {
-  // 全員動物數都為 0
+  // Every player has 0 animals
   return players.value.every(p => {
     const counts = Object.values(p.animals || {});
     return counts.reduce((a, b) => a + (b || 0), 0) === 0;
@@ -205,38 +250,41 @@ function nameOf(id: string) {
 }
 
 /** --------------------------
- * 事件處理
+ * Event handlers
  * -------------------------- */
 function onChooseAuction() {
-  // 由 auction store 自行抽牌與進入 bidding（或內部呼叫 game.drawCardForAuction）
-  auction.enterBidding();
+  // Route via Ably to host
+  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+  void broadcast.publish(Msg.Action.ChooseAuction, { playerId: myId });
 }
 
 function onChooseCowTrade() {
-  // Phase 1 尚未實作 Cow Trade：寫一則 Log 並保持在 turn.choice
-  game.appendLog('Cow Trade 將在之後的 Phase 實作，目前僅支援 Auction。');
+  // Not implemented in Phase 2
+  game.appendLog('Cow Trade will be implemented in a later phase; use Auction for now.');
 }
 
 function onPlaceBid(playerId: string, moneyCardIds: string[]) {
-  auction.placeBid(playerId, moneyCardIds, newId());
+  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+  void broadcast.publish(Msg.Action.PlaceBid, { playerId: myId, moneyCardIds }, { actionId: newId() });
 }
 
 function onPassBid(playerId: string) {
-  auction.passBid(playerId);
+  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+  void broadcast.publish(Msg.Action.PassBid, { playerId: myId });
 }
 
 function onHostAward() {
-  // 依 README：主持人結標 → 進入結算流程，由 store 轉 `phase='turn.end'`
-  auction.hostAward();
+  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+  void broadcast.publish(Msg.Action.HostAward, { playerId: myId });
 }
 
 function onHostBuyback() {
-  // Phase 1 不實作買回；Phase 3 再接上 store action
-  game.appendLog('（提示）買回功能將在 Phase 3 實作，目前僅支援得標流程。');
+  // Not implemented in Phase 2
+  game.appendLog('(Dev) Buyback will be implemented in Phase 3; skipping for now.');
 }
 
 function nextTurn() {
-  // 嘗試進入終局；否則輪轉回合並開始下一輪
+  // Try to finish; else rotate to next player
   game.checkEndAndMaybeFinish();
   if (game.phase !== 'game.end') {
     game.rotateTurn();
@@ -245,13 +293,13 @@ function nextTurn() {
 }
 
 function resetToSetup() {
-  // 簡單作法：重新整個頁面或提供 game.reset()（若你有實作 reset 可改用）
+  // Simple reset: reload the page
   window.location.reload();
 }
 
 function endNowForDev() {
-  // 僅開發用：不改規則，只是把結果顯示出來
-  game.computeFinalScores(); // 若你的實作需要先計算可先存到 store
+  // Dev helper: compute scores and jump to game end
+  game.computeFinalScores();
   game.phase = 'game.end' as any;
 }
 
@@ -335,4 +383,27 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   padding: 0 0 0 18px;
 }
 .hint { opacity: .75; margin-top: 4px; font-size: 12px; }
+.plist {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+}
+.badge {
+  margin-left: 6px;
+  padding: 2px 6px;
+  border-radius: 9999px;
+  background: #eef2f7;
+  color: #1f2937;
+  font-size: 12px;
+}
+.compact-bidder { padding: 8px; }
+.muted { color: #6b7280; font-size: 12px; }
+
+.compact-host { padding: 8px; }
+
 </style>
+
+
+<style scoped>.banner{margin:8px 16px;padding:8px 12px;border-radius:8px;background:#fff3cd;border:1px solid #ffecb5;color:#7a5d00;font-weight:600}</style>
+
+

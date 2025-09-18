@@ -152,6 +152,7 @@ export const useGameStore = defineStore('game', {
     auction: null,
     cow: null,
     log: [],
+    hostId: '',
     stateVersion: 0,
   }),
 
@@ -210,6 +211,25 @@ export const useGameStore = defineStore('game', {
     appendLog(msg: string) {
       this.log.push(msg);
       this.bumpVersion();
+    },
+
+    /**
+     * Phase 2: 設定/更新 Host Id（presence/election 後由網路層設定）
+     */
+    setHostId(id: string) {
+      this.hostId = id;
+      this.bumpVersion();
+    },
+
+    /**
+     * Phase 2: 由 Host 下發的完整快照覆蓋本地狀態。
+     * 注意：為避免 Proxy 汙染，請確保傳入為可序列化的 plain object。
+     */
+    applySnapshot(next: GameState) {
+      // 直接覆蓋整個 $state（Pinia 支援）
+      // 保留函式與 getter 邏輯不變。
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (this as any).$state = next as unknown as GameState;
     },
 
     /**
