@@ -195,7 +195,7 @@ export const useAuctionStore = defineStore('auction', {
 
       // Auto-advance to next turn without requiring a UI button
       game.checkEndAndMaybeFinish();
-      if (game.phase !== 'game.end') {
+      if (game.phase !== 'turn.end') {
         game.rotateTurn();
         game.startTurn();
       }
