@@ -71,34 +71,37 @@
     <!-- Auction: Bidding -->
     <section v-else-if="phase === 'auction.bidding'" class="view auction">
       <h2>Auction: Bidding</h2>
-      <div v-if="game.auction?.card" class="auction-info">
-        <strong>拍賣動物：</strong>{{ short(game.auction.card.animal) }}
-        <span class="auctioneer">（拍賣者：{{ nameOf(auctioneerId) }}）</span>
+
+      <!-- Auctioneer: Fixed prominent display at top -->
+      <div class="panel auctioneer-info">
+        <div class="auctioneer-header">
+          <strong>{{ nameOf(auctioneerId) }}</strong> <span class="auctioneer-badge">AUCTIONEER</span>
+        </div>
+        <div class="auction-details">
+          <div class="animal-display">
+            <span class="label">拍賣動物：</span>
+            <strong class="animal-name">{{ game.auction?.card?.animal }}</strong>
+          </div>
+          <div class="highest-bid">
+            <span class="label">目前最高：</span>
+            <strong class="highest-amount">{{ game.auction?.highest?.total ?? 0 }}</strong>
+          </div>
+        </div>
       </div>
+
       <div class="auction-grid">
         <div
           v-for="p in players"
           :key="p.id"
           class="auction-col"
         >
-          <!-- Auctioneer: show a compact, read-only card during bidding (no host panel needed) -->
-          <div v-if="p.id === auctioneerId" class="panel compact-host">
-            <strong>{{ nameOf(p.id) }}</strong>
-            <div class="muted">Auctioneer</div>
-            <div>Highest: <strong>{{ game.auction?.highest?.total ?? 0 }}</strong></div>
-          </div>
           <AuctionBidderView
-            v-else-if="p.id === myId"
+            v-if="p.id === myId"
             :self="p"
             :highest="game.auction?.highest"
-            :auctionAnimal="short(game.auction?.card?.animal || '')"
             @place-bid="(ids:string[]) => onPlaceBid(p.id, ids)"
             @pass="() => onPassBid(p.id)"
           />
-          <div v-else class="panel compact-bidder">
-            <strong>{{ p.name }}</strong>
-            <div class="muted">Bidding...</div>
-          </div>
         </div>
       </div>
     </section>
@@ -110,7 +113,6 @@
         <AuctionHostView
           :highest="game.auction?.highest"
           :canBuyback="canBuyback"
-          :auctionAnimal="short(game.auction?.card?.animal || '')"
           @award="onHostAward"
           @buyback="onHostBuyback"
         />
@@ -255,21 +257,20 @@ function nameOf(id: string) {
   return players.value.find(p => p.id === id)?.name ?? id;
 }
 
-function short(a: string): string {
-  switch (a) {
-    case 'chicken': return '雞';
-    case 'goose': return '鵝';
-    case 'cat': return '貓';
-    case 'dog': return '狗';
-    case 'sheep': return '羊';
-    case 'snake': return '蛇';
-    case 'donkey': return '驢';
-    case 'pig': return '豬';
-    case 'cow': return '牛';
-    case 'horse': return '馬';
-    default: return a;
-  }
+/** --------------------------
+ * Event handlers
+ * -------------------------- */
+function onChooseAuction() {
+  // Route via Ably to host
+  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+  void broadcast.publish(Msg.Action.ChooseAuction, { playerId: myId });
 }
+
+function onChooseCowTrade() {
+  // Not implemented in Phase 2
+  game.appendLog('Cow Trade will be implemented in a later phase; use Auction for now.');
+}
+
 function onPlaceBid(playerId: string, moneyCardIds: string[]) {
   const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
   void broadcast.publish(Msg.Action.PlaceBid, { playerId: myId, moneyCardIds }, { actionId: newId() });
@@ -408,20 +409,70 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 
 .compact-host { padding: 8px; }
 
-.auction-info {
+/* Auctioneer Info Panel */
+.auctioneer-info {
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+  border: 2px solid #60a5fa;
+  border-radius: 12px;
+  padding: 16px;
   margin-bottom: 16px;
-  padding: 8px 12px;
-  background: #1f2937;
-  border: 1px solid #4b5563;
-  border-radius: 8px;
-  color: #f9fafb;
+  box-shadow: 0 15px 35px rgba(59, 130, 246, 0.4);
 }
-.auction-info strong {
+
+.auctioneer-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.auctioneer-badge {
+  background: #f59e0b;
+  color: #1f2937;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.5);
+  animation: pulse 2s infinite;
+}
+
+.auction-details {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.animal-display,
+.highest-bid {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.label {
+  color: #93c5fd;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.animal-name,
+.highest-amount {
   color: #ffffff;
+  font-size: 18px;
+  font-weight: 800;
 }
-.auctioneer {
-  color: #d1d5db;
-  margin-left: 8px;
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
 }
 
 </style>
