@@ -71,6 +71,10 @@
     <!-- Auction: Bidding -->
     <section v-else-if="phase === 'auction.bidding'" class="view auction">
       <h2>Auction: Bidding</h2>
+      <div v-if="game.auction?.card" class="auction-info">
+        <strong>拍賣動物：</strong>{{ short(game.auction.card.animal) }}
+        <span class="auctioneer">（拍賣者：{{ nameOf(auctioneerId) }}）</span>
+      </div>
       <div class="auction-grid">
         <div
           v-for="p in players"
@@ -87,6 +91,7 @@
             v-else-if="p.id === myId"
             :self="p"
             :highest="game.auction?.highest"
+            :auctionAnimal="short(game.auction?.card?.animal || '')"
             @place-bid="(ids:string[]) => onPlaceBid(p.id, ids)"
             @pass="() => onPassBid(p.id)"
           />
@@ -105,6 +110,7 @@
         <AuctionHostView
           :highest="game.auction?.highest"
           :canBuyback="canBuyback"
+          :auctionAnimal="short(game.auction?.card?.animal || '')"
           @award="onHostAward"
           @buyback="onHostBuyback"
         />
@@ -249,20 +255,21 @@ function nameOf(id: string) {
   return players.value.find(p => p.id === id)?.name ?? id;
 }
 
-/** --------------------------
- * Event handlers
- * -------------------------- */
-function onChooseAuction() {
-  // Route via Ably to host
-  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
-  void broadcast.publish(Msg.Action.ChooseAuction, { playerId: myId });
+function short(a: string): string {
+  switch (a) {
+    case 'chicken': return '雞';
+    case 'goose': return '鵝';
+    case 'cat': return '貓';
+    case 'dog': return '狗';
+    case 'sheep': return '羊';
+    case 'snake': return '蛇';
+    case 'donkey': return '驢';
+    case 'pig': return '豬';
+    case 'cow': return '牛';
+    case 'horse': return '馬';
+    default: return a;
+  }
 }
-
-function onChooseCowTrade() {
-  // Not implemented in Phase 2
-  game.appendLog('Cow Trade will be implemented in a later phase; use Auction for now.');
-}
-
 function onPlaceBid(playerId: string, moneyCardIds: string[]) {
   const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
   void broadcast.publish(Msg.Action.PlaceBid, { playerId: myId, moneyCardIds }, { actionId: newId() });
@@ -401,9 +408,23 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 
 .compact-host { padding: 8px; }
 
+.auction-info {
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: #1f2937;
+  border: 1px solid #4b5563;
+  border-radius: 8px;
+  color: #f9fafb;
+}
+.auction-info strong {
+  color: #ffffff;
+}
+.auctioneer {
+  color: #d1d5db;
+  margin-left: 8px;
+}
+
 </style>
 
 
 <style scoped>.banner{margin:8px 16px;padding:8px 12px;border-radius:8px;background:#fff3cd;border:1px solid #ffecb5;color:#7a5d00;font-weight:600}</style>
-
-

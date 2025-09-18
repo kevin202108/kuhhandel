@@ -5,6 +5,10 @@
       <small class="hint">結標、或（條件允許時）進行買回</small>
     </header>
 
+    <div v-if="auctionAnimal" class="auction-animal">
+      <strong>當前拍賣動物：</strong>{{ auctionAnimal }}
+    </div>
+
     <div class="highest">
       <template v-if="highest">
         <div class="price">
@@ -61,6 +65,7 @@ import type { Bid } from '@/types/game';
 const props = defineProps<{
   highest?: Bid;
   canBuyback: boolean;
+  auctionAnimal?: string;
 }>();
 
 const emit = defineEmits<{
@@ -162,6 +167,17 @@ const buybackDisabledReason = computed<string>(() => {
   background: #2563eb;
   border-color: #2563eb;
   color: white;
+}
+.auction-animal {
+  font-size: 14px;
+  padding: 6px 8px;
+  background: #374151;
+  border: 1px solid #4b5563;
+  border-radius: 6px;
+  color: #f9fafb;
+}
+.auction-animal strong {
+  color: #ffffff;
 }
 .rules summary {
   cursor: pointer;

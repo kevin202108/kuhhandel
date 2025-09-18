@@ -59,6 +59,7 @@ import type { Player, Bid } from '@/types/game';
 const props = defineProps<{
   self: Player;
   highest?: Bid;
+  auctionAnimal?: string;
 }>();
 
 const emit = defineEmits<{
