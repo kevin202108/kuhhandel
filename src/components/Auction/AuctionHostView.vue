@@ -39,7 +39,7 @@
         @click="onBuyback"
         :title="buybackDisabledReason"
       >
-        主持人買回（等額）
+        主持人買回（支付大於最高出價）
       </button>
     </div>
 
@@ -51,12 +51,37 @@
         <li>買回需主持人能以錢卡湊出等額，否則此按鈕會被停用。</li>
       </ul>
     </details>
+
+    <!-- 買回確認對話框 -->
+    <div v-if="showBuybackDialog" class="buyback-dialog">
+      <div class="dialog-overlay" @click="cancelBuyback"></div>
+      <div class="dialog-content">
+        <h4>確認買回</h4>
+        <p>選擇錢卡支付給最高出價者（需要大於 {{ highest?.total }}元）</p>
+
+        <MoneyPad
+          :money-cards="auctioneerMoneyCards"
+          :selected-ids="selectedMoneyCardIds"
+          @toggle="onToggleMoneyCard"
+        />
+
+        <div class="dialog-actions">
+          <button class="btn secondary" @click="cancelBuyback">取消</button>
+          <button class="btn primary" :disabled="!canConfirmBuyback" @click="confirmBuyback">
+            確認買回（支付 {{ buybackTotal }}元）
+          </button>
+        </div>
+      </div>
+    </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import type { Bid } from '@/types/game';
+import { computed, ref } from 'vue';
+import MoneyPad from '@/components/MoneyPad.vue';
+import { useGameStore } from '@/store/game';
+import { useAuctionStore } from '@/store/auction';
+import type { Bid, MoneyCard } from '@/types/game';
 
 const props = defineProps<{
   highest?: Bid;
@@ -65,16 +90,63 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'award'): void;
-  (e: 'buyback'): void;
+  (e: 'buyback', moneyCardIds: string[]): void;
 }>();
+
+const game = useGameStore();
+const auction = useAuctionStore();
+
+const showBuybackDialog = ref(false);
+const selectedMoneyCardIds = ref<string[]>([]);
+
+const auctioneerMoneyCards = computed(() => {
+  if (!auction.auction?.auctioneerId) return [];
+  const auctioneer = game.players.find(p => p.id === auction.auction!.auctioneerId);
+  return auctioneer?.moneyCards ?? [];
+});
+
+const buybackTotal = computed(() => {
+  return selectedMoneyCardIds.value
+    .map(id => auctioneerMoneyCards.value.find(card => card.id === id)?.value ?? 0)
+    .reduce((sum: number, value) => sum + value, 0);
+});
+
+const canConfirmBuyback = computed(() => {
+  return selectedMoneyCardIds.value.length > 0 &&
+         buybackTotal.value > (props.highest?.total ?? 0);
+});
 
 function onAward() {
   emit('award');
 }
+
 function onBuyback() {
   if (!props.highest || !props.canBuyback) return;
-  emit('buyback');
+  showBuybackDialog.value = true;
+  selectedMoneyCardIds.value = [];
 }
+
+function onToggleMoneyCard(cardId: string) {
+  const index = selectedMoneyCardIds.value.indexOf(cardId);
+  if (index > -1) {
+    selectedMoneyCardIds.value.splice(index, 1);
+  } else {
+    selectedMoneyCardIds.value.push(cardId);
+  }
+}
+
+function cancelBuyback() {
+  showBuybackDialog.value = false;
+  selectedMoneyCardIds.value = [];
+}
+
+function confirmBuyback() {
+  if (!canConfirmBuyback.value) return;
+  emit('buyback', [...selectedMoneyCardIds.value]);
+  showBuybackDialog.value = false;
+  selectedMoneyCardIds.value = [];
+}
+
 function formatTs(ts: number) {
   try {
     const d = new Date(ts);
@@ -164,5 +236,62 @@ const buybackDisabledReason = computed<string>(() => {
 .rules ul {
   margin: 6px 0 0;
   padding-left: 20px;
+}
+
+.buyback-dialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.dialog-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.dialog-content {
+  position: relative;
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  max-width: 400px;
+  width: 100%;
+  margin: 20px;
+}
+
+.dialog-content h4 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.dialog-content p {
+  margin: 0 0 16px 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.secondary {
+  background: #6b7280;
+  border-color: #6b7280;
+  color: white;
 }
 </style>

@@ -37,7 +37,14 @@ export const useAuctionStore = defineStore('auction', {
   }),
 
   getters: {
-    canAuctioneerBuyback: () => false,
+    canAuctioneerBuyback: (state) => {
+      const game = useGameStore();
+      if (!state.auction?.highest) return false;
+      const auctioneer = game.players.find(p => p.id === state.auction!.auctioneerId);
+      if (!auctioneer) return false;
+      const totalMoney = auctioneer.moneyCards.reduce((sum, card) => sum + card.value, 0);
+      return totalMoney > state.auction.highest.total;
+    },
   },
 
   actions: {
@@ -159,43 +166,83 @@ export const useAuctionStore = defineStore('auction', {
       this.settle('award');
     },
 
-    settle(mode: 'award' | 'buyback') {
+    hostBuyback(moneyCardIds: string[], actionId: string) {
+      const game = useGameStore();
+      if (!this.auction || game.phase !== 'auction.closing') return;
+
+      // 驗證是主持人操作
+      const myId = game.hostId || '';
+      if (myId !== this.auction.auctioneerId) return;
+
+      // 驗證金額充足
+      const auctioneer = getPlayerById(game.$state, this.auction.auctioneerId);
+      const payAmount = moneyTotalOf(auctioneer, moneyCardIds);
+      if (payAmount <= this.auction.highest!.total) return;
+
+      this.auction.closed = true;
+      this.syncGameAuction();
+      this.settle('buyback', moneyCardIds);
+    },
+
+    settle(mode: 'award' | 'buyback', moneyCardIds?: string[]) {
       const game = useGameStore();
       if (!this.auction) return;
-      if (mode !== 'award') return;
 
       const a = this.auction;
       const { card, highest, auctioneerId } = a;
       if (!card || !auctioneerId) throw new Error('Invalid auction state');
 
-      const seller = getPlayerById(game.$state, auctioneerId);
+      const auctioneer = getPlayerById(game.$state, auctioneerId);
 
-      if (highest) {
+      if (mode === 'award') {
+        if (highest) {
+          const buyer = getPlayerById(game.$state, highest.playerId);
+          const idSet = new Set(highest.moneyCardIds);
+          const moved: MoneyCard[] = [];
+          buyer.moneyCards = buyer.moneyCards.filter((m) => {
+            if (idSet.has(m.id)) {
+              moved.push(m);
+              return false;
+            }
+            return true;
+          });
+          auctioneer.moneyCards.push(...moved);
+          buyer.animals[card.animal] = (buyer.animals[card.animal] ?? 0) + 1;
+          game.appendLog(`Award: ${buyer.name} pays ${highest.total} for ${card.animal}.`);
+        } else {
+          auctioneer.animals[card.animal] = (auctioneer.animals[card.animal] ?? 0) + 1;
+          game.appendLog(`No bids: auctioneer ${auctioneer.name} takes ${card.animal}.`);
+        }
+      } else if (mode === 'buyback' && highest && moneyCardIds) {
+        // 買回邏輯：主持人支付錢給最高出價者，主持人獲得動物卡
         const buyer = getPlayerById(game.$state, highest.playerId);
-        const idSet = new Set(highest.moneyCardIds);
+        const payAmount = moneyTotalOf(auctioneer, moneyCardIds);
+
+        // 移動錢卡從主持人到最高出價者
+        const idSet = new Set(moneyCardIds);
         const moved: MoneyCard[] = [];
-        buyer.moneyCards = buyer.moneyCards.filter((m) => {
+        auctioneer.moneyCards = auctioneer.moneyCards.filter((m) => {
           if (idSet.has(m.id)) {
             moved.push(m);
             return false;
           }
           return true;
         });
-        seller.moneyCards.push(...moved);
-        buyer.animals[card.animal] = (buyer.animals[card.animal] ?? 0) + 1;
-        game.appendLog(`Award: ${buyer.name} pays ${highest.total} for ${card.animal}.`);
-      } else {
-        seller.animals[card.animal] = (seller.animals[card.animal] ?? 0) + 1;
-        game.appendLog(`No bids: auctioneer ${seller.name} takes ${card.animal}.`);
+        buyer.moneyCards.push(...moved);
+
+        // 主持人獲得動物卡
+        auctioneer.animals[card.animal] = (auctioneer.animals[card.animal] ?? 0) + 1;
+        game.appendLog(`Buyback: ${auctioneer.name} buys back ${card.animal} for ${payAmount}.`);
       }
 
+      // 結束拍賣並進入下一輪
       game.phase = 'turn.end';
       this.auction = null;
       this.syncGameAuction();
 
       // Auto-advance to next turn without requiring a UI button
       game.checkEndAndMaybeFinish();
-      if (game.phase !== 'game.end') {
+      if (game.phase === 'turn.end') {
         game.rotateTurn();
         game.startTurn();
       }

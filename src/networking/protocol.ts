@@ -50,7 +50,7 @@ export interface PayloadByType {
   // Host-only（只給 Host，看 README 說明；Phase 4 才用）
   [Msg.Action.CommitCowTrade]: { playerId: string; moneyCardIds: string[] };
   [Msg.Action.HostAward]: { playerId: string };
-  [Msg.Action.HostBuyback]: { playerId: string };
+  [Msg.Action.HostBuyback]: { playerId: string; moneyCardIds: string[] };
 
   // State.*
   [Msg.State.Update]: { state: GameState };

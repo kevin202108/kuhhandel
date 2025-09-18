@@ -278,9 +278,10 @@ function onHostAward() {
   void broadcast.publish(Msg.Action.HostAward, { playerId: myId });
 }
 
-function onHostBuyback() {
-  // Not implemented in Phase 2
-  game.appendLog('(Dev) Buyback will be implemented in Phase 3; skipping for now.');
+function onHostBuyback(moneyCardIds: string[]) {
+  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+  const actionId = newId();
+  void broadcast.publish(Msg.Action.HostBuyback, { playerId: myId, moneyCardIds }, { actionId });
 }
 
 function nextTurn() {
@@ -405,5 +406,3 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 
 
 <style scoped>.banner{margin:8px 16px;padding:8px 12px;border-radius:8px;background:#fff3cd;border:1px solid #ffecb5;color:#7a5d00;font-weight:600}</style>
-
-
