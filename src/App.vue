@@ -138,6 +138,8 @@ import AuctionHostView from '@/components/Auction/AuctionHostView.vue';
 
 import { useGameStore } from '@/store/game';
 import { useAuctionStore } from '@/store/auction';
+import broadcast from '@/services/broadcast';
+import { Msg } from '@/networking/protocol';
 import type { Phase, Player } from '@/types/game';
 import { newId } from '@/utils/id';
 
@@ -173,8 +175,8 @@ function startGame() {
     id: `p${i + 1}`,
     name: p.name.trim() || `P${i + 1}`
   }));
-  game.setupGame(players);
-  game.startTurn();
+  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+  void broadcast.publish(Msg.Action.StartGame, { playerId: myId });
 }
 
 /** --------------------------
@@ -209,7 +211,10 @@ function nameOf(id: string) {
  * -------------------------- */
 function onChooseAuction() {
   // 由 auction store 自行抽牌與進入 bidding（或內部呼叫 game.drawCardForAuction）
-  auction.enterBidding();
+  {
+    const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+    void broadcast.publish(Msg.Action.ChooseAuction, { playerId: myId });
+  }
 }
 
 function onChooseCowTrade() {
@@ -218,16 +223,25 @@ function onChooseCowTrade() {
 }
 
 function onPlaceBid(playerId: string, moneyCardIds: string[]) {
-  auction.placeBid(playerId, moneyCardIds, newId());
+  {
+    const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+    void broadcast.publish(Msg.Action.PlaceBid, { playerId: myId, moneyCardIds }, { actionId: newId() });
+  }
 }
 
 function onPassBid(playerId: string) {
-  auction.passBid(playerId);
+  {
+    const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+    void broadcast.publish(Msg.Action.PassBid, { playerId: myId });
+  }
 }
 
 function onHostAward() {
   // 依 README：主持人結標 → 進入結算流程，由 store 轉 `phase='turn.end'`
-  auction.hostAward();
+  {
+    const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+    void broadcast.publish(Msg.Action.HostAward, { playerId: myId });
+  }
 }
 
 function onHostBuyback() {

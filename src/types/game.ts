@@ -56,6 +56,8 @@ export interface GameState {
   auction: AuctionState | null;
   cow: CowTradeState | null;
   log: string[];
+  // Phase 2: Host authority owner for this room. Determined via presence/election.
+  hostId?: string;
   stateVersion: number;     // Host 每次更新 +1
 }
 
