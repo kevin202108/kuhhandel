@@ -53,7 +53,7 @@
       </div>
     </section>
 
-    <!-- 階段 3: 秘密出價 (只有發起者操作) -->
+    <!-- 階段 3: 秘密出價 (發起者和目標玩家同時操作) -->
     <section v-else-if="phase === 'cow.commit'" class="view cow-trade">
       <h2>🐄 牛交易：秘密出價</h2>
 
@@ -63,6 +63,7 @@
           <p><strong>交易動物：</strong>{{ tradeAnimal }}</p>
           <p><strong>交易數量：</strong>{{ tradeAmount }} 隻</p>
           <p><strong>目標玩家：</strong>{{ targetName }}</p>
+          <p><em>請選擇錢卡進行秘密出價，雙方都提交後會揭曉結果</em></p>
         </div>
         <CowConfirmBar
           @confirm="onConfirm"
@@ -71,20 +72,23 @@
       </div>
 
       <!-- 目標玩家視角 -->
-      <div v-else-if="isTarget" class="panel waiting">
-        <div class="muted">
-          <p>{{ initiatorName }} 正在出價...</p>
-          <div class="trade-preview">
-            <p>交易動物：{{ tradeAnimal }}</p>
-            <p>交易數量：{{ tradeAmount }} 隻</p>
-          </div>
+      <div v-else-if="isTarget" class="panel">
+        <div class="trade-info">
+          <p><strong>交易動物：</strong>{{ tradeAnimal }}</p>
+          <p><strong>交易數量：</strong>{{ tradeAmount }} 隻</p>
+          <p><strong>發起玩家：</strong>{{ initiatorName }}</p>
+          <p><em>請選擇錢卡進行秘密出價，雙方都提交後會揭曉結果</em></p>
         </div>
+        <CowConfirmBar
+          @confirm="onConfirm"
+          @cancel="onCancel"
+        />
       </div>
 
       <!-- 其他玩家視角 -->
       <div v-else class="panel waiting">
         <div class="muted">
-          <p>{{ initiatorName }} 正在向 {{ targetName }} 出價...</p>
+          <p>{{ initiatorName }} 和 {{ targetName }} 正在進行秘密出價...</p>
           <div class="trade-preview">
             <p>交易動物：{{ tradeAnimal }}</p>
             <p>交易數量：{{ tradeAmount }} 隻</p>

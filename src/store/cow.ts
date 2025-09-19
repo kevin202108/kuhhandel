@@ -167,6 +167,11 @@ export const useCowStore = defineStore('cow', {
 
     // 檢查雙方是否都已提交
     checkBothCommitted() {
+      console.log('[DEBUG] checkBothCommitted', {
+        initiatorSecret: this.initiatorSecret ? this.initiatorSecret.length : 'none',
+        targetSecret: this.targetSecret ? this.targetSecret.length : 'none',
+        canReveal: this.initiatorSecret && this.targetSecret
+      });
       const game = useGameStore();
       if (this.initiatorSecret && this.targetSecret) {
         game.phase = 'cow.reveal';
