@@ -167,8 +167,57 @@
         <div class="muted">Waiting for auctioneer to select money for buyback…</div>
       </div>
     </section>
+    <!-- Cow Trade: Select Target -->
+    <section v-else-if="phase === 'cow.selectTarget'" class="view cow-trade">
+      <CowTargetPicker
+        :players="players"
+        :myId="myId"
+        @select-target="onSelectCowTarget"
+      />
+    </section>
+
+    <!-- Cow Trade: Select Animal -->
+    <section v-else-if="phase === 'cow.selectAnimal'" class="view cow-trade">
+      <CowAnimalPicker
+        :myAnimals="activePlayer?.animals || emptyAnimals"
+        @select-animal="onSelectCowAnimal"
+      />
+    </section>
+
+    <!-- Cow Trade: Commit -->
+    <section v-else-if="phase === 'cow.commit'" class="view cow-trade">
+      <CowConfirmBar
+        :selectedAnimal="game.cow?.targetAnimal || 'chicken'"
+        :targetPlayer="players.find(p => p.id === game.cow?.targetPlayerId) || players[0]!"
+        :myMoneyCards="activePlayer?.moneyCards || []"
+        @commit-trade="onCommitCowTrade"
+        @cancel-commit="onCancelCowCommit"
+      />
+    </section>
+
+    <!-- Cow Trade: Reveal -->
+    <section v-else-if="phase === 'cow.reveal'" class="view cow-trade">
+      <div class="panel">
+        <h2>正在揭示雙方選擇...</h2>
+        <p class="description">請稍候，正在處理交易結果</p>
+      </div>
+    </section>
+
+    <!-- Cow Trade: Settlement -->
+    <section v-else-if="phase === 'cow.settlement'" class="view cow-trade">
+      <div class="panel">
+        <h2>交易結算中...</h2>
+        <p class="description">正在執行資源交換</p>
+      </div>
+    </section>
+
     <!-- Turn End -->
-    
+    <section v-else-if="phase === 'turn.end'" class="view turn-end">
+      <div class="panel">
+        <h2>回合結束</h2>
+        <p class="description">正在準備下一回合...</p>
+      </div>
+    </section>
 
     <!-- Game End -->
     <section v-else-if="phase === 'game.end'" class="view game-end">
@@ -205,12 +254,15 @@ import TurnChoice from '@/components/TurnChoice.vue';
 import AuctionBidderView from '@/components/Auction/AuctionBidderView.vue';
 import AuctionHostView from '@/components/Auction/AuctionHostView.vue';
 import MoneyPad from '@/components/MoneyPad.vue';
+import CowTargetPicker from '@/components/CowTrade/CowTargetPicker.vue';
+import CowAnimalPicker from '@/components/CowTrade/CowAnimalPicker.vue';
+import CowConfirmBar from '@/components/CowTrade/CowConfirmBar.vue';
 
 import { useGameStore } from '@/store/game';
 import { useAuctionStore } from '@/store/auction';
 import broadcast from '@/services/broadcast';
 import { Msg } from '@/networking/protocol';
-import type { Phase, Player } from '@/types/game';
+import type { Phase, Player, Animal } from '@/types/game';
 import { newId } from '@/utils/id';
 
 const game = useGameStore();
@@ -323,6 +375,20 @@ function nameOf(id: string) {
   return players.value.find(p => p.id === id)?.name ?? id;
 }
 
+// Empty animals object for type safety
+const emptyAnimals: Record<Animal, number> = {
+  chicken: 0,
+  goose: 0,
+  cat: 0,
+  dog: 0,
+  sheep: 0,
+  snake: 0,
+  donkey: 0,
+  pig: 0,
+  cow: 0,
+  horse: 0,
+};
+
 /** --------------------------
  * Event handlers
  * -------------------------- */
@@ -333,8 +399,11 @@ function onChooseAuction() {
 }
 
 function onChooseCowTrade() {
-  // Not implemented in Phase 2
-  game.appendLog('Cow Trade will be implemented in a later phase; use Auction for now.');
+  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+  // Initialize cow trade phase
+  game.phase = 'cow.selectTarget';
+  game.appendLog(`${nameOf(myId)} 發起牛交易`);
+  game.bumpVersion();
 }
 
 function onPlaceBid(playerId: string, moneyCardIds: string[]) {
@@ -429,6 +498,171 @@ function onCancelBuyback() {
   });
   void broadcast.publish(Msg.Action.CancelBuyback, { playerId: myId });
   selectedMoneyIds.value = []; // Reset selection
+}
+
+
+
+function onSelectCowTarget(targetId: string) {
+  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+  console.log('[CowTrade] Selecting target:', targetId);
+
+  // Initialize cow trade state
+  if (!game.cow) {
+    game.cow = {
+      initiatorId: myId,
+      targetPlayerId: targetId,
+      targetAnimal: undefined,
+      initiatorSecret: undefined,
+      targetSecret: undefined,
+    };
+  } else {
+    game.cow.targetPlayerId = targetId;
+  }
+
+  game.phase = 'cow.selectAnimal';
+  game.appendLog(`交易對象：${nameOf(targetId)}`);
+  game.bumpVersion();
+}
+
+function onSelectCowAnimal(animal: string) {
+  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+  console.log('[CowTrade] Selecting animal:', animal);
+
+  if (game.cow) {
+    game.cow.targetAnimal = animal as any;
+  }
+
+  game.phase = 'cow.commit';
+  game.appendLog(`選擇動物：${animal}`);
+  game.bumpVersion();
+}
+
+function onCommitCowTrade(moneyCardIds: string[]) {
+  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+  console.log('[CowTrade] Committing trade:', moneyCardIds);
+
+  if (game.cow) {
+    if (myId === game.cow.initiatorId) {
+      game.cow.initiatorSecret = moneyCardIds;
+    } else if (myId === game.cow.targetPlayerId) {
+      game.cow.targetSecret = moneyCardIds;
+    }
+
+    // If both players have committed, proceed to reveal
+    if (game.cow.initiatorSecret && game.cow.targetSecret) {
+      setTimeout(() => {
+        game.phase = 'cow.reveal';
+        game.bumpVersion();
+
+        setTimeout(() => {
+          onSettleCowTrade();
+        }, 2000);
+      }, 1000);
+    }
+  }
+
+  game.appendLog(`玩家 ${nameOf(myId)} 已提交交易`);
+  game.bumpVersion();
+}
+
+function onCancelCowCommit() {
+  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+  console.log('[CowTrade] Cancelling commit');
+
+  if (game.cow) {
+    if (myId === game.cow.initiatorId) {
+      game.cow.initiatorSecret = undefined;
+    } else if (myId === game.cow.targetPlayerId) {
+      game.cow.targetSecret = undefined;
+    }
+  }
+
+  game.appendLog(`玩家 ${nameOf(myId)} 取消提交`);
+  game.bumpVersion();
+}
+
+function onSettleCowTrade() {
+  console.log('[CowTrade] Settling trade');
+
+  if (!game.cow || !game.cow.initiatorId || !game.cow.targetPlayerId || !game.cow.targetAnimal) {
+    onCancelCowCommit();
+    return;
+  }
+
+  const initiator = game.players.find(p => p.id === game.cow!.initiatorId);
+  const target = game.players.find(p => p.id === game.cow!.targetPlayerId);
+
+  if (!initiator || !target || !game.cow.initiatorSecret || !game.cow.targetSecret) {
+    onCancelCowCommit();
+    return;
+  }
+
+  // Calculate winner based on money totals
+  const calcTotal = (cardIds: string[]) => {
+    const allCards = [...initiator!.moneyCards, ...target!.moneyCards];
+    return cardIds.reduce((total, id) => {
+      const card = allCards.find(c => c.id === id);
+      return total + (card?.value || 0);
+    }, 0);
+  };
+
+  const initiatorTotal = calcTotal(game.cow.initiatorSecret);
+  const targetTotal = calcTotal(game.cow.targetSecret);
+
+  let winner, logMessage;
+
+  if (initiatorTotal > targetTotal) {
+    winner = initiator;
+    logMessage = `${initiator.name} 贏得交易，獲得 ${game.cow.targetAnimal}`;
+  } else if (targetTotal > initiatorTotal) {
+    winner = target;
+    logMessage = `${target.name} 贏得交易，獲得 ${game.cow.targetAnimal}`;
+  } else {
+    // Tie - no exchange
+    logMessage = '交易平手，取消交易';
+  }
+
+  if (winner && winner !== initiator) {
+    // Exchange animal
+    winner.animals[game.cow.targetAnimal] = (winner.animals[game.cow.targetAnimal] || 0) + 1;
+    initiator.animals[game.cow.targetAnimal] = Math.max(0, (initiator.animals[game.cow.targetAnimal] || 0) - 1);
+
+    // Exchange money cards
+    const winnerCards = game.cow.initiatorSecret.map(id =>
+      initiator.moneyCards.find(card => card.id === id)
+    ).filter(Boolean);
+
+    const initiatorCards = game.cow.targetSecret.map(id =>
+      target.moneyCards.find(card => card.id === id)
+    ).filter(Boolean);
+
+    // Remove cards from original owners
+    initiator.moneyCards = initiator.moneyCards.filter(card => !game.cow!.initiatorSecret!.includes(card.id));
+    target.moneyCards = target.moneyCards.filter(card => !game.cow!.targetSecret!.includes(card.id));
+
+    // Add cards to new owners
+    initiator.moneyCards.push(...initiatorCards as any[]);
+    target.moneyCards.push(...winnerCards as any[]);
+  }
+
+  game.appendLog(logMessage);
+
+  // End cow trade and return to turn flow
+  endCowTrade();
+}
+
+function endCowTrade() {
+  game.phase = 'turn.end';
+  game.cow = null;
+  game.bumpVersion();
+
+  setTimeout(() => {
+    game.checkEndAndMaybeFinish();
+    if (game.phase !== 'game.end') {
+      game.rotateTurn();
+      game.startTurn();
+    }
+  }, 1000);
 }
 
 </script>
