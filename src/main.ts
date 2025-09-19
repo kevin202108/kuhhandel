@@ -16,6 +16,7 @@ import broadcast from '@/services/broadcast';
 import { useGameStore } from '@/store/game';
 import { useAuctionStore } from '@/store/auction';
 import { getHostId } from '@/services/host-election';
+import type { Animal } from '@/types/game';
 
 // ---- URL flags嚗? README 閬?銝?湛?
 const url = new URL(location.href);
@@ -218,6 +219,69 @@ void (async function bootstrapPhase2() {
         game.appendLog('Auctioneer cancelled buyback.');
         auction.syncGameAuction();
       });
+
+      // ChooseCowTrade (only turn owner)
+      const offChooseCowTrade = broadcast.subscribe(Msg.Action.ChooseCowTrade, (env) => {
+        if (!accept(env.type, env.senderId, env.actionId, env.ts)) return;
+        const pid = (env.payload as any)?.playerId as string | undefined;
+        if (!pid || pid !== game.turnOwnerId) return;
+        if (env.senderId !== pid) return;
+        game.phase = 'cow.selectTarget';
+        game.appendLog(`${game.players.find(p => p.id === pid)?.name || pid} 發起牛交易`);
+        game.bumpVersion();
+      });
+
+      // SelectCowTarget (only cow initiator)
+      const offSelectCowTarget = broadcast.subscribe(Msg.Action.SelectCowTarget, (env) => {
+        if (!accept(env.type, env.senderId, env.actionId, env.ts)) return;
+        if (!game.cow || env.senderId !== game.cow.initiatorId) return;
+        const { targetId } = env.payload as { targetId: string };
+        game.cow.targetPlayerId = targetId;
+        game.phase = 'cow.selectAnimal';
+        game.appendLog(`交易對象：${game.players.find(p => p.id === targetId)?.name || targetId}`);
+        game.bumpVersion();
+      });
+
+      // SelectCowAnimal (only cow initiator)
+      const offSelectCowAnimal = broadcast.subscribe(Msg.Action.SelectCowAnimal, (env) => {
+        if (!accept(env.type, env.senderId, env.actionId, env.ts)) return;
+        if (!game.cow || env.senderId !== game.cow.initiatorId) return;
+        const { animal } = env.payload as { animal: Animal };
+        game.cow.targetAnimal = animal;
+        game.phase = 'cow.commit';
+        game.appendLog(`選擇動物：${animal}`);
+        game.bumpVersion();
+      });
+
+      // CommitCowTrade (cow initiator or target)
+      const offCommitCowTrade = broadcast.subscribe(Msg.Action.CommitCowTrade, (env) => {
+        if (!accept(env.type, env.senderId, env.actionId, env.ts)) return;
+        if (!game.cow) return;
+        const { playerId, moneyCardIds } = env.payload as { playerId: string; moneyCardIds: string[] };
+        if (env.senderId !== playerId) return;
+
+        if (playerId === game.cow.initiatorId) {
+          game.cow.initiatorSecret = moneyCardIds;
+        } else if (playerId === game.cow.targetPlayerId) {
+          game.cow.targetSecret = moneyCardIds;
+        }
+
+        game.appendLog(`玩家 ${game.players.find(p => p.id === playerId)?.name || playerId} 已提交交易`);
+        game.bumpVersion();
+
+        // If both players have committed, proceed to reveal
+        if (game.cow.initiatorSecret && game.cow.targetSecret) {
+          setTimeout(() => {
+            game.phase = 'cow.reveal';
+            game.bumpVersion();
+
+            setTimeout(() => {
+              onSettleCowTrade();
+            }, 2000);
+          }, 1000);
+        }
+      });
+
       // Host: broadcast full snapshot on any mutation
       game.$subscribe((_mutation, state) => {
         const plain = JSON.parse(JSON.stringify(state));
@@ -332,6 +396,10 @@ function exposeDebugHelpers(isConnected: boolean) {
         '  off()'
     );
   }
+}
+
+function onSettleCowTrade() {
+  throw new Error('Function not implemented.');
 }
 // (removed) duplicate import left from dev-only section
 

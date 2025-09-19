@@ -35,7 +35,7 @@
         </div>
         <div class="offer-actions">
           <button @click="acceptTrade" class="btn primary">接受</button>
-          <button @click="showCounterOffer" class="btn secondary">還價</button>
+          <button @click="counterOffer" class="btn secondary">還價</button>
         </div>
       </div>
     </div>
