@@ -111,7 +111,7 @@
         <div class="trade-info">
           <p><strong>交易動物：</strong>{{ tradeAnimal }}</p>
           <p><strong>交易數量：</strong>{{ tradeAmount }} 隻</p>
-          <p><strong>對方出價：</strong>{{ initiatorBid }}</p>
+          <p><strong>對方出價：</strong>{{ initiatorCardCount }} 張牌</p>
         </div>
         <div class="choice-buttons">
           <button class="primary" @click="onAcceptOffer">接受出價</button>
@@ -293,6 +293,10 @@ const initiatorBid = computed(() => {
   }, 0)
 })
 
+const initiatorCardCount = computed(() => {
+  return cow.initiatorSecret?.length || 0
+})
+
 const targetBid = computed(() => {
   if (!cow.targetSecret) return '?'
   const player = game.players.find(p => p.id === cow.targetPlayerId)
@@ -435,5 +439,45 @@ function onCounterCancel() {
   padding: 0.5rem;
   background: #2d3748;
   border-radius: 4px;
+}
+
+.choice-buttons {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+.choice-buttons button {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.choice-buttons .primary {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.choice-buttons .primary:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+.choice-buttons .secondary {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+}
+
+.choice-buttons .secondary:hover {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
 }
 </style>
