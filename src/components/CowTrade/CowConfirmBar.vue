@@ -8,11 +8,34 @@
         <div class="value animal-value">
           <strong>{{ animalNames[selectedAnimal] }} ({{ short(selectedAnimal) }})</strong>
         </div>
+        <div class="trade-amount">數量：{{ tradeAmount }}</div>
+      </div>
+      <div v-if="opposingOffer > 0" class="trade-item">
+        <div class="label">對方出價金額：</div>
+        <div class="value money-value">
+          <strong>{{ opposingOffer }}</strong>
+        </div>
+      </div>
+      <div v-if="isTargetingMe && opposingOffer > 0" class="acceptance-section">
+        <div class="acceptance-buttons">
+          <button @click="acceptTrade" class="btn primary">接受出價</button>
+          <button @click="counterOffer" class="btn secondary">還價</button>
+        </div>
       </div>
       <div class="trade-item">
         <div class="label">交易對象：</div>
         <div class="value">
           <strong>{{ targetPlayerName }}</strong>
+        </div>
+      </div>
+      <div v-if="isTargetingMe" class="trade-offer">
+        <div class="offer-info">
+          <div class="label">對方出價：</div>
+          <div class="value">{{ opposingOffer }} 金錢</div>
+        </div>
+        <div class="offer-actions">
+          <button @click="acceptTrade" class="btn primary">接受</button>
+          <button @click="showCounterOffer" class="btn secondary">還價</button>
         </div>
       </div>
     </div>
@@ -87,6 +110,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'commit-trade', moneyCardIds: string[]): void;
   (e: 'cancel-commit'): void;
+  (e: 'accept-trade'): void;
+  (e: 'counter-offer'): void;
 }>();
 
 const selectedIds = ref<string[]>([]);
@@ -115,8 +140,39 @@ const selectedTotal = computed(() => {
 
 const targetPlayerName = computed(() => props.targetPlayer?.name || '未知玩家');
 
+// Calculate how many animals should be traded
+const tradeAmount = computed(() => {
+  const myCount = props.myMoneyCards.length; // This should be the animal count
+  const targetCount = 0; // This should be passed as prop
+
+  // If both have 2 or more, trade 2 animals; otherwise trade 1
+  return (myCount >= 2 && targetCount >= 2) ? 2 : 1;
+});
+
+// Check if the current player is being targeted
+const isTargetingMe = computed(() => {
+  // This logic needs to be passed as props from parent
+  return false; // Placeholder for now
+});
+
+// Opposing player's offer amount
+const opposingOffer = computed(() => {
+  // This needs to be passed as prop from parent
+  return 0; // Placeholder for now
+});
+
 function short(a: Animal): string {
   return animalNames[a].charAt(0).toUpperCase();
+}
+
+function acceptTrade() {
+  // Emit event to parent to accept the trade
+  emit('accept-trade');
+}
+
+function counterOffer() {
+  // Emit event to parent to show counter offer interface
+  emit('counter-offer');
 }
 
 function onToggleMoneyCard(cardId: string) {

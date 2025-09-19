@@ -180,6 +180,7 @@
     <section v-else-if="phase === 'cow.selectAnimal'" class="view cow-trade">
       <CowAnimalPicker
         :myAnimals="activePlayer?.animals || emptyAnimals"
+        :targetPlayer="players.find(p => p.id === game.cow?.targetPlayerId)"
         @select-animal="onSelectCowAnimal"
       />
     </section>

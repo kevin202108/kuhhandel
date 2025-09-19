@@ -36,11 +36,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import type { Animal } from '@/types/game';
+import { ref, computed } from 'vue';
+import type { Animal, Player } from '@/types/game';
 
 const props = defineProps<{
   myAnimals: Record<Animal, number>;
+  targetPlayer?: Player;
 }>();
 
 const emit = defineEmits<{
@@ -62,8 +63,32 @@ const animalNames: Record<Animal, string> = {
   horse: '馬',
 };
 
-const availableAnimals = (Object.keys(props.myAnimals) as Animal[])
-  .filter(animal => props.myAnimals[animal] > 0);
+// Only show animals that both players have (both > 0)
+const availableAnimals = computed(() => {
+  if (!props.targetPlayer) return [];
+
+  const myAnimalTypes = (Object.keys(props.myAnimals) as Animal[])
+    .filter(animal => props.myAnimals[animal] > 0);
+
+  const targetAnimalTypes = (Object.keys(props.targetPlayer.animals) as Animal[])
+    .filter(animal => props.targetPlayer!.animals[animal] > 0);
+
+  // Return intersection of animals both players have
+  return myAnimalTypes.filter(animal => targetAnimalTypes.includes(animal));
+});
+
+const calculatedTradeAmount = computed(() => {
+  if (!selectedAnimal.value || !props.targetPlayer) return 0;
+
+  const myCount = props.myAnimals[selectedAnimal.value] || 0;
+  const targetCount = props.targetPlayer.animals[selectedAnimal.value] || 0;
+
+  // If both have 2 or more, trade 2 animals; otherwise trade 1
+  if (myCount >= 2 && targetCount >= 2) {
+    return 2;
+  }
+  return 1;
+});
 
 function selectAnimal(animal: Animal) {
   selectedAnimal.value = animal;
