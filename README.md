@@ -36,24 +36,24 @@ my-vue-game/
 ├─ index.html                      # root #app + 載入 main.ts
 ├─ src/
 │  ├─ main.ts                      # 建立 App、Pinia、載入樣式、Ably 啟動、debug 旗標
-│  ├─ App.vue                      # 根組件：依階段切頁（NameEntry/Lobby/Game）
+│  ├─ App.vue                      # 根組件：依階段切頁（SetupForm/Game）
 │  ├─ assets/
-│  │  └─ main.css
+│  │  ├─ main.css
+│  │  └─ vue.svg
 │  ├─ components/
-│  │  ├─ Entry/
-│  │  │  ├─ NameEntry.vue         # 只輸入名字；送出即 join
-│  │  │  └─ Lobby.vue             # 大廳：玩家清單、Host 徽章、Host 才能「開始遊戲」
-│  │  ├─ Hud.vue                  # 玩家/錢/動物/牌庫/回合/Log
-│  │  ├─ TurnChoice.vue           # 兩鍵：Auction / Cow Trade（主要玩家）
+│  │  ├─ SetupForm.vue             # 設定表單：輸入名字、加入遊戲
+│  │  ├─ Hud.vue                   # 玩家/錢/動物/牌庫/回合/Log
+│  │  ├─ TurnChoice.vue            # 兩鍵：Auction / Cow Trade（主要玩家）
+│  │  ├─ AuctionPhase.vue          # 拍賣階段總覽
+│  │  ├─ MoneyPad.vue              # 錢卡按鈕群（多選、取消、合計）
 │  │  ├─ Auction/
-│  │  │  ├─ AuctionBidderView.vue # 投標者：MoneyPad、確認出價/放棄
-│  │  │  ├─ AuctionHostView.vue   # 主持人：得標 / 買回（Phase 2 先禁用）
-│  │  │  ├─ MoneyPad.vue          # 錢卡按鈕群（多選、取消、合計）
-│  │  │  └─ BidList.vue           # 顯示目前最高價（可選歷史）
+│  │  │  ├─ AuctionBidderView.vue  # 投標者：MoneyPad、確認出價/放棄
+│  │  │  ├─ AuctionHostView.vue    # 主持人：得標 / 買回（Phase 2 先禁用）
+│  │  │  └─ BidList.vue            # 顯示目前最高價（可選歷史）
 │  │  └─ CowTrade/
-│  │     ├─ CowTargetPicker.vue   # ⏸ Phase 4 才開
-│  │     ├─ CowAnimalPicker.vue   # ⏸ Phase 4 才開
-│  │     └─ CowConfirmBar.vue     # ⏸ Phase 4 才開（只傳 Host）
+│  │     ├─ CowAnimalPicker.vue    # ⏸ Phase 4 才開
+│  │     ├─ CowConfirmBar.vue      # ⏸ Phase 4 才開
+│  │     └─ CowTargetPicker.vue    # ⏸ Phase 4 才開（只傳 Host）
 │  ├─ store/
 │  │  ├─ game.ts                   # 回合、驢子發錢、計分、終局、hostId
 │  │  ├─ auction.ts                # bidding/closing/settlement
@@ -75,12 +75,14 @@ my-vue-game/
 │  ├─ utils/
 │  │  ├─ id.ts                     # uuid/nanoid
 │  │  └─ math.ts                   # 合計/比較輔助（忽略 0 面額）
-│  └─ data/
-│     └─ deck.json                 # （可選）每動物 4 張來源資料
+├─ test/
+│  └─ store.game.spec.ts            # Store 測試檔案
 ├─ tsconfig.json
-├─ tsconfig.node.json
+├─ tsconfig.app.json                # Vue 應用程式 TypeScript 設定
+├─ tsconfig.node.json               # Node.js 環境 TypeScript 設定
 ├─ package.json
-├─ vite.config.ts                  # ★ 單檔，內含 Vitest 設定（無 vitest.config.ts）
+├─ vite.config.ts                   # Vite 設定
+├─ vitest.config.ts                 # Vitest 測試設定
 ├─ .eslintrc.cjs
 ├─ .prettierrc
 ├─ .prettierignore
@@ -233,8 +235,8 @@ Host-only Actions：`selectTarget`／`selectAnimal`／`commitSecret`／`revealAn
 
 ### 元件（props / emits 摘要）
 
-* `Entry/NameEntry.vue` → emits：`confirm(name: string)`（presence.enter + `system.join`）
-* `Entry/Lobby.vue` → emits：`start-game()`（**僅 Host**顯示）
+* `SetupForm.vue` → emits：`confirm(name: string)`（presence.enter + `system.join`）
+* `AuctionPhase.vue` → 拍賣階段總覽元件
 * `TurnChoice.vue` → emits：`choose-auction` | `choose-cow-trade`（Phase 2：Cow Trade 長期 disabled）
 * `AuctionBidderView.vue` → emits：`place-bid(moneyCardIds)`、`pass()`
 * `AuctionHostView.vue` → emits：`award()`、`buyback()`（Phase 2 disabled）
@@ -408,7 +410,7 @@ export function makeEnvelope<T extends MsgType>(
 
 ### 全局
 
-* **UI 流**：NameEntry 輸入名字（normalize 後即 join）→ 進 Lobby。只有 Host 看得到/能按「開始遊戲」。
+* **UI 流**：SetupForm 輸入名字（normalize 後即 join）。只有 Host 看得到/能按「開始遊戲」。
 * 棄牌堆不重洗；無回合上限。
 * **有錢定義**：玩家**正面面額合計 > 0**（忽略 0 面額）【規格補完】。
 * `playerId` 唯一；同 room 第二分頁若使用同 `playerId` → 後加入者自動離線。
@@ -548,13 +550,13 @@ export function makeEnvelope<T extends MsgType>(
 }
 ```
 
-### `vite.config.ts`（單檔，同時當 Vitest 設定）
+### `vite.config.ts`（Vite 設定）
 
 ```ts
-import { defineConfig } from 'vitest/config';
+import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import path from 'node:path';
-import pkg from './package.json' assert { type: 'json' };
+import pkg from './package.json';
 
 export default defineConfig({
   plugins: [vue()],
@@ -564,16 +566,49 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(pkg.version),
     __BUILD_TIME__: JSON.stringify(new Date().toISOString())
   },
-  build: { sourcemap: true, target: 'es2020' },
-  test: {
-    environment: 'happy-dom',
-    globals: true,
-    include: ['src/**/*.{test,spec}.{ts,tsx}'],
-    exclude: ['node_modules', 'dist'],
-    coverage: { reporter: ['text', 'html', 'lcov'] },
-    environmentOptions: { happyDOM: { url: 'http://localhost:5173' } }
-  }
+  build: { sourcemap: true, target: 'es2020' }
 });
+```
+
+### `vitest.config.ts`（Vitest 測試設定）
+
+```ts
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    environment: 'node',
+    globals: true,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+    },
+  },
+});
+```
+
+### `tsconfig.app.json`（Vue 應用程式 TypeScript 設定）
+
+```ts
+{
+  "extends": "@vue/tsconfig/tsconfig.dom.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+
+    // 關鍵：確保有 ES2015+ 型別（含 Set/Map/Promise）
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"]
+}
 ```
 
 ### ESLint / Prettier
@@ -675,7 +710,7 @@ pnpm-debug.log*
 
 **UI / 身分 / Host**
 
-* 進站只填名字 → 送出即 join；Lobby 顯示玩家清單與 Host 徽章。
+* 進站只填名字 → 送出即 join；SetupForm 顯示玩家清單與 Host 徽章。
 * 只有 Host 看得到/能按「開始遊戲」；人數不合法（建議 <2 或 >5）按鈕禁用。
 * 同一 room 二登（相同 `playerId`）→ **後加入者**被拒絕（本地離線）。
 * setup 期以 presence 最小 `playerId` 鎖定 `hostId`；**僅舊 Host 離線**才重選。
@@ -747,7 +782,7 @@ stateDiagram-v2
 
 **A. Vitest 設定**
 
-* 測試設定放在**單一 `vite.config.ts`**（匯入 `defineConfig` 自 `vitest/config`），不建立 `vitest.config.ts`。
+* 測試設定放在**單獨的 `vitest.config.ts`** 檔案，使用 `defineConfig` 自 `vitest/config`。
 
 **B. Presence 重複 `playerId`**
 
