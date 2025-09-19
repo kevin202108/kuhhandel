@@ -2,12 +2,6 @@
   <div class="bidder" :class="{ 'is-passed': hasPassed }">
     <header class="header">
       <h3 class="title">你持有的金錢卡</h3>
-      <div class="highest" v-if="highest">
-        目前最高價：
-        <strong class="amount">{{ highest.total }}</strong>
-        <small class="desc">（先到先贏）</small>
-      </div>
-      <div class="highest none" v-else>目前尚無出價</div>
 
       <!-- 顯眼提示：已放棄 -->
       <div v-if="hasPassed" class="banner-passed">你已放棄本輪出價</div>
@@ -27,9 +21,9 @@
     </section>
 
     <footer class="footer">
-      <div class="you">
+      <!-- <div class="you">
         你的出價合計：<strong class="amount">{{ total }}</strong>
-      </div>
+      </div> -->
 
       <div class="actions">
         <button class="secondary" @click="onClear" :disabled="selectedIds.length === 0 || hasPassed">

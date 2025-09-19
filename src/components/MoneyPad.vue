@@ -15,14 +15,7 @@
       <p v-if="!moneyCards.length" class="empty">你沒有可用的錢卡</p>
     </div>
 
-    <div class="bar">
-      <div class="total">
-        合計：
-        <span class="amount">{{ total }}</span>
-      </div>
-
-
-    </div>
+    <div class="bar"></div>
   </div>
 </template>
 
