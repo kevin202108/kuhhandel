@@ -2,8 +2,7 @@
   <div class="cow-animal-picker">
     <h3>選擇交易動物</h3>
     <div class="trade-info">
-      <p>與 <strong>{{ targetPlayer?.name }}</strong> 交易</p>
-      <p class="trade-amount">預計交易數量：{{ tradeAmount }} 隻</p>
+      <p>與玩家 <strong>{{ targetPlayer?.name }}</strong> 交易</p>
     </div>
     <div class="animals-grid">
       <div
