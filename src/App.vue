@@ -562,8 +562,18 @@ function onCowCounterConfirm(moneyCardIds: string[]) {
 }
 
 function onCowCancelled() {
-  const cowStore = useCowStore();
-  cowStore.cancelCowTrade();
+  console.log('[DEBUG] onCowCancelled: Sending cancel request', {
+    currentPhase: game.phase,
+    myId
+  });
+
+  // Send CancelBuyback message to host for unified handling
+  const myId_local = myId; // needed for closure
+  void broadcast.publish(Msg.Action.CancelBuyback, {
+    playerId: myId_local
+  }, { actionId: newId() });
+
+  console.log('[DEBUG] onCowCancelled broadcast published');
 }
 
 </script>
