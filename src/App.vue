@@ -187,13 +187,85 @@
 
     <!-- Cow Trade: Commit -->
     <section v-else-if="phase === 'cow.commit'" class="view cow-trade">
-      <CowConfirmBar
-        :selectedAnimal="game.cow?.targetAnimal || 'chicken'"
-        :targetPlayer="players.find(p => p.id === game.cow?.targetPlayerId) || players[0]!"
-        :myMoneyCards="activePlayer?.moneyCards || []"
-        @commit-trade="onCommitCowTrade"
-        @cancel-commit="onCancelCowCommit"
-      />
+      <div v-if="myId === game.cow?.targetPlayerId" class="panel">
+        <h2>目標玩家：{{ nameOf(game.cow?.initiatorId || '') }}</h2>
+
+        <!-- Trade details -->
+        <div class="trade-summary-card">
+          <div class="trade-detail">
+            <span class="label">交易動物：</span>
+            <span class="value">{{ game.cow?.targetAnimal }}</span>
+          </div>
+        </div>
+
+        <!-- Initiator's status -->
+        <div class="player-status">
+          <div class="status-item">
+            <span class="status-dot" :class="{ ready: !!game.cow?.initiatorSecret }"></span>
+            <span>發起者 {{ game.cow?.initiatorSecret ? '已選擇金錢' : '選擇中...' }}</span>
+          </div>
+          <div class="status-item">
+            <span class="status-dot" :class="{ ready: !!game.cow?.targetSecret }"></span>
+            <span>你 {{ game.cow?.targetSecret ? '已選擇金錢' : '尚未選擇金錢' }}</span>
+          </div>
+        </div>
+
+        <!-- Money selection for target player -->
+        <div v-if="!game.cow?.targetSecret" class="money-selection">
+          <h4>請選擇你的金錢</h4>
+          <p class="description">選擇你要作為還價的金錢卡</p>
+
+          <MoneyPad
+            :moneyCards="activePlayer?.moneyCards || []"
+            :selectedIds="selectedCounterIds"
+            @toggle="onToggleCounterCard"
+          />
+
+          <div class="counter-actions">
+            <button
+              class="btn primary"
+              :disabled="selectedCounterIds.length === 0"
+              @click="onSubmitCounterOffer"
+            >
+              確認還價
+            </button>
+          </div>
+        </div>
+
+        <!-- Response buttons (alternative to counter-offer) -->
+        <div v-if="game.cow?.initiatorSecret && !game.cow?.targetSecret" class="response-actions">
+          <button class="btn primary" @click="onAcceptCowTrade">接受對方出價</button>
+          <button class="btn danger" @click="onRejectCowTrade">拒絕交易</button>
+        </div>
+
+        <!-- Both submitted - waiting for result -->
+        <div v-if="game.cow?.initiatorSecret && game.cow?.targetSecret" class="waiting-result">
+          <h4>雙方都已提交，將會根據出價比較決定結果</h4>
+        </div>
+      </div>
+
+      <div v-else-if="myId === game.cow?.initiatorId" class="initiator-view">
+        <CowConfirmBar
+          :selectedAnimal="game.cow?.targetAnimal || 'chicken'"
+          :targetPlayer="players.find(p => p.id === game.cow?.targetPlayerId) || players[0]!"
+          :myMoneyCards="activePlayer?.moneyCards || []"
+          @commit-trade="onCommitCowTrade"
+          @cancel-commit="onCancelCowCommit"
+        />
+
+        <!-- Show target player's commitment status -->
+        <div class="panel target-status">
+          <div class="status-item">
+            <span class="status-dot" :class="{ ready: !!game.cow?.targetSecret }"></span>
+            <span>目標玩家 {{ game.cow?.targetSecret ? '已選擇金錢' : '尚未選擇' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div v-else class="panel">
+        <h2>正在等待牛交易...</h2>
+        <p class="description">其他玩家正在進行牛交易</p>
+      </div>
     </section>
 
     <!-- Cow Trade: Reveal -->
@@ -263,6 +335,7 @@ import { useGameStore } from '@/store/game';
 import { useAuctionStore } from '@/store/auction';
 import broadcast from '@/services/broadcast';
 import { Msg } from '@/networking/protocol';
+import { useCowStore } from "@/store/cow";
 import type { Phase, Player, Animal } from '@/types/game';
 import { newId } from '@/utils/id';
 
@@ -365,6 +438,16 @@ const selectedMoneyIds = ref<string[]>([]);
 const selectedMoneyTotal = computed(() => {
   return selectedMoneyIds.value.reduce((sum, id) => {
     const card = auctioneerMoneyCards.value.find(c => c.id === id);
+    return sum + (card?.value || 0);
+  }, 0);
+});
+
+// CowTrade counter offer variables
+const selectedCounterIds = ref<string[]>([]);
+
+const selectedCounterTotal = computed(() => {
+  return selectedCounterIds.value.reduce((sum, id) => {
+    const card = activePlayer.value?.moneyCards.find(c => c.id === id);
     return sum + (card?.value || 0);
   }, 0);
 });
@@ -501,6 +584,51 @@ function onCancelBuyback() {
   selectedMoneyIds.value = []; // Reset selection
 }
 
+function onToggleCounterCard(cardId: string) {
+  const index = selectedCounterIds.value.indexOf(cardId);
+  if (index > -1) {
+    selectedCounterIds.value.splice(index, 1);
+    console.log('[CowTrade] Deselected counter card:', cardId);
+  } else {
+    selectedCounterIds.value.push(cardId);
+    console.log('[CowTrade] Selected counter card:', cardId);
+  }
+}
+
+function onSubmitCounterOffer() {
+  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+  console.log('[CowTrade] Submitting counter offer:', selectedCounterIds.value);
+
+  if (selectedCounterIds.value.length === 0 || !game.cow || myId !== game.cow.targetPlayerId) {
+    return;
+  }
+
+  // Submit the counter offer
+  game.cow.targetSecret = [...selectedCounterIds.value];
+  selectedCounterIds.value = []; // Reset selection
+
+  // Broadcast the commit
+  void broadcast.publish(Msg.Action.CommitCowTrade, {
+    playerId: myId,
+    moneyCardIds: game.cow.targetSecret
+  });
+
+  game.appendLog(`玩家 ${nameOf(myId)} 提交還價`);
+  game.bumpVersion();
+
+  // If both players have committed, proceed to reveal
+  if (game.cow.initiatorSecret && game.cow.targetSecret) {
+    setTimeout(() => {
+      game.phase = 'cow.reveal';
+      game.bumpVersion();
+
+      setTimeout(() => {
+        onSettleCowTrade();
+      }, 2000);
+    }, 1000);
+  }
+}
+
 
 
 function onSelectCowTarget(targetId: string) {
@@ -523,6 +651,9 @@ function onSelectCowTarget(targetId: string) {
   game.phase = 'cow.selectAnimal';
   game.appendLog(`交易對象：${nameOf(targetId)}`);
   game.bumpVersion();
+
+  // Broadcast the state change to other players
+  void broadcast.publish(Msg.Action.ChooseCowTrade, { playerId: myId });
 }
 
 function onSelectCowAnimal(animal: string) {
@@ -536,6 +667,9 @@ function onSelectCowAnimal(animal: string) {
   game.phase = 'cow.commit';
   game.appendLog(`選擇動物：${animal}`);
   game.bumpVersion();
+
+  // Broadcast the state change to other players
+  void broadcast.publish(Msg.Action.SelectCowAnimal, { playerId: myId, animal: animal as Animal });
 }
 
 function onCommitCowTrade(moneyCardIds: string[]) {
@@ -548,6 +682,12 @@ function onCommitCowTrade(moneyCardIds: string[]) {
     } else if (myId === game.cow.targetPlayerId) {
       game.cow.targetSecret = moneyCardIds;
     }
+
+    // Broadcast the commit to ensure target player sees the UI
+    void broadcast.publish(Msg.Action.CommitCowTrade, {
+      playerId: myId,
+      moneyCardIds
+    });
 
     // If both players have committed, proceed to reveal
     if (game.cow.initiatorSecret && game.cow.targetSecret) {
@@ -580,6 +720,34 @@ function onCancelCowCommit() {
 
   game.appendLog(`玩家 ${nameOf(myId)} 取消提交`);
   game.bumpVersion();
+}
+
+function onAcceptCowTrade() {
+  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+  console.log('[CowTrade] Accepting trade');
+
+  // Target player accepts the trade - immediately complete with initiator's offer
+  if (game.cow && myId === game.cow.targetPlayerId && game.cow.initiatorSecret) {
+    game.cow.targetSecret = game.cow.initiatorSecret; // Same offer as initiator
+    onSettleCowTrade();
+  }
+}
+
+function onRejectCowTrade() {
+  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+  console.log('[CowTrade] Rejecting trade');
+
+  game.appendLog(`${nameOf(myId)} 拒絕交易`);
+  endCowTrade();
+}
+
+function onShowCounterOffer() {
+  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+  console.log('[CowTrade] Showing counter offer interface');
+
+  // For now, just show the money selection interface
+  // In a more complex implementation, this could show a different UI
+  // Here we can reuse the same CowConfirmBar but show it for the target player
 }
 
 function onSettleCowTrade() {
