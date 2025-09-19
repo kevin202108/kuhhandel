@@ -129,6 +129,7 @@
 import { computed } from 'vue'
 import { useGameStore } from '@/store/game'
 import { useCowStore } from '@/store/cow'
+import { useCowTrade } from '@/composables/useCowTrade'
 import CowTargetPicker from './CowTargetPicker.vue'
 import CowAnimalPicker from './CowAnimalPicker.vue'
 import CowConfirmBar from './CowConfirmBar.vue'
@@ -152,10 +153,36 @@ const myId = url.searchParams.get('player')?.toLowerCase().trim() || ''
 const game = useGameStore()
 const cow = useCowStore()
 
-// 玩家角色判斷
-const isInitiator = computed(() => myId === cow.initiatorId)
-const isTarget = computed(() => myId === cow.targetPlayerId)
-const isParticipant = computed(() => isInitiator.value || isTarget.value)
+// 玩家角色判斷 - 添加防護邏輯和調試
+const isInitiator = computed(() => {
+  // 如果 cow.initiatorId 存在，直接比較
+  if (cow.initiatorId) {
+    const result = myId === cow.initiatorId
+    console.log('[DEBUG] isInitiator (direct):', { myId, cowInitiatorId: cow.initiatorId, result })
+    return result
+  }
+
+  // 如果 cow.initiatorId 不存在，但遊戲階段是選擇目標階段且當前玩家是回合擁有者，則假設是發起者
+  if (props.phase === 'cow.selectTarget' && myId === game.turnOwnerId) {
+    console.log('[DEBUG] isInitiator (fallback):', { myId, gameTurnOwnerId: game.turnOwnerId, phase: props.phase, result: true })
+    return true
+  }
+
+  console.log('[DEBUG] isInitiator (default):', { myId, cowInitiatorId: cow.initiatorId, gameTurnOwnerId: game.turnOwnerId, phase: props.phase, result: false })
+  return false
+})
+
+const isTarget = computed(() => {
+  const result = myId === cow.targetPlayerId
+  console.log('[DEBUG] isTarget:', { myId, cowTargetPlayerId: cow.targetPlayerId, result })
+  return result
+})
+
+const isParticipant = computed(() => {
+  const result = isInitiator.value || isTarget.value
+  console.log('[DEBUG] isParticipant:', { isInitiator: isInitiator.value, isTarget: isTarget.value, result })
+  return result
+})
 
 // 獲取玩家名稱的輔助函數
 function getPlayerName(playerId: string): string {
