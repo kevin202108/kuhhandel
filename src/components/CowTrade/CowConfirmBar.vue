@@ -42,6 +42,7 @@ import MoneyPad from '@/components/MoneyPad.vue';
 import type { Animal, Player, MoneyCard } from '@/types/game';
 
 const props = defineProps<{
+  playerId?: string;  // 如果沒有提供，使用當前邏輯
   onConfirm: (moneyCardIds: string[]) => void;
   onCancel: () => void;
 }>();
@@ -60,13 +61,32 @@ const targetAnimal = computed(() => cowStore.targetAnimal);
 const tradeAmount = computed(() => cowStore.tradeAmount);
 
 const availableMoneyCards = computed((): MoneyCard[] => {
-  if (isInitiator.value) {
-    const initiator = gameStore.players.find(p => p.id === cowStore.initiatorId);
-    return initiator?.moneyCards || [];
-  } else {
-    const me = gameStore.activePlayer;
-    return me?.moneyCards || [];
+  // 如果明確指定了 playerId，使用對應玩家的錢卡
+  if (props.playerId) {
+    const player = gameStore.players.find(p => p.id === props.playerId);
+    const result = player?.moneyCards || [];
+    console.log('[DEBUG] availableMoneyCards (by playerId):', {
+      specifiedPlayerId: props.playerId,
+      foundPlayerCards: result.length,
+      moneyCardIds: result.map(c => c.id)
+    });
+    return result;
   }
+
+  // 備用邏輯：使用舊的判斷（兼容性）
+  const result = isInitiator.value
+    ? gameStore.players.find(p => p.id === cowStore.initiatorId)?.moneyCards || []
+    : gameStore.activePlayer?.moneyCards || [];
+
+  console.log('[DEBUG] availableMoneyCards (legacy):', {
+    isInitiator: isInitiator.value,
+    activePlayerId: gameStore.activePlayer?.id,
+    initiatorId: cowStore.initiatorId,
+    moneyCardsCount: result.length,
+    moneyCardIds: result.map(c => c.id)
+  });
+
+  return result;
 });
 
 const isInitiator = computed(() => {

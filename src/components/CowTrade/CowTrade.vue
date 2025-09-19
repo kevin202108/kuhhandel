@@ -65,6 +65,7 @@
           <p><strong>目標玩家：</strong>{{ targetName }}</p>
         </div>
         <CowConfirmBar
+          :playerId="cow.initiatorId"
           @confirm="onConfirm"
           @cancel="onCancel"
         />
@@ -145,6 +146,7 @@
           <p><strong>對方出價：</strong>{{ initiatorBid }}</p>
         </div>
         <CowConfirmBar
+          :playerId="cow.targetPlayerId"
           @confirm="onCounterConfirm"
           @cancel="onCounterCancel"
         />

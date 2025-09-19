@@ -186,6 +186,11 @@ export const useCowStore = defineStore('cow', {
     // 目標者提交回價選擇
     commitCounter(moneyCardIds: string[]) {
       const game = useGameStore();
+      console.log('[DEBUG] commitCounter called:', {
+        moneyCardIds,
+        targetPlayerId: this.targetPlayerId,
+        availablePlayerIds: game.players.map(p => p.id)
+      });
       this.targetSecret = moneyCardIds;
       this.syncGameCow();
       game.phase = 'cow.reveal';
