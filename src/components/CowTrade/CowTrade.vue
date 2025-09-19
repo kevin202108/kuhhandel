@@ -162,8 +162,9 @@ const isInitiator = computed(() => {
     return result
   }
 
-  // 如果 cow.initiatorId 不存在，但遊戲階段是選擇目標階段且當前玩家是回合擁有者，則假設是發起者
-  if (props.phase === 'cow.selectTarget' && myId === game.turnOwnerId) {
+  // 備用邏輯：如果當前玩家是回合擁有者，且處於牛交易相關階段，則假設是發起者
+  const cowTradePhases = ['cow.selectTarget', 'cow.selectAnimal', 'cow.commit']
+  if (cowTradePhases.includes(props.phase) && myId === game.turnOwnerId) {
     console.log('[DEBUG] isInitiator (fallback):', { myId, gameTurnOwnerId: game.turnOwnerId, phase: props.phase, result: true })
     return true
   }
