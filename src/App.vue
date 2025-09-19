@@ -248,6 +248,9 @@ import TurnChoice from '@/components/TurnChoice.vue';
 import AuctionBidderView from '@/components/Auction/AuctionBidderView.vue';
 import AuctionHostView from '@/components/Auction/AuctionHostView.vue';
 import MoneyPad from '@/components/MoneyPad.vue';
+import CowTargetPicker from '@/components/CowTrade/CowTargetPicker.vue';
+import CowAnimalPicker from '@/components/CowTrade/CowAnimalPicker.vue';
+import CowConfirmBar from '@/components/CowTrade/CowConfirmBar.vue';
 
 import { useGameStore } from '@/store/game';
 import { useAuctionStore } from '@/store/auction';
