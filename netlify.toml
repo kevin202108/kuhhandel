@@ -13,3 +13,6 @@
 [dev]
   command = "npm run dev"
   port = 5173
+
+[context.dev.environment]
+  ABLY_API_KEY = "TcxruQ.FtzzKQ:hsS7HbBYvjXCl-CV4PTjsebDeSSyDOrhcGW3JGTflvQ"
