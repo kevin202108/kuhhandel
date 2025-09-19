@@ -19,7 +19,7 @@ export interface Card { id: string; kind: CardKind; animal: Animal; }
 export type Phase =
   | 'setup' | 'turn.choice'
   | 'auction.bidding' | 'auction.closing' | 'auction.buyback' | 'auction.settlement'
-  | 'cow.selectTarget' | 'cow.selectAnimal' | 'cow.commit' | 'cow.reveal' | 'cow.settlement'
+  | 'cow.selectTarget' | 'cow.selectAnimal' | 'cow.commit' | 'cow.choose' | 'cow.selectMoney' | 'cow.reveal' | 'cow.settlement'
   | 'turn.end' | 'game.end';
 
 export interface Bid {

@@ -39,6 +39,53 @@ app.use(pinia);
 app.mount('#app');
 setActivePinia(pinia);
 
+// ---- 狀態一致性驗證函數
+function validateStateConsistency(serverState: any) {
+  if (!serverState) return;
+
+  const game = useGameStore();
+  const auction = useAuctionStore();
+  const cow = useCowStore();
+
+  // 驗證核心狀態
+  if (serverState.phase !== game.phase) {
+    console.warn('[CONSISTENCY] Phase mismatch:', {
+      server: serverState.phase,
+      client: game.phase
+    });
+  }
+
+  if (serverState.turnOwnerId !== game.turnOwnerId) {
+    console.warn('[CONSISTENCY] Turn owner mismatch:', {
+      server: serverState.turnOwnerId,
+      client: game.turnOwnerId
+    });
+  }
+
+  // 驗證 cow 狀態
+  const serverCow = serverState.cow;
+  const clientCow = {
+    initiatorId: cow.initiatorId,
+    targetPlayerId: cow.targetPlayerId,
+    targetAnimal: cow.targetAnimal
+  };
+
+  if (serverCow) {
+    const differences: string[] = [];
+    if (serverCow.initiatorId !== clientCow.initiatorId) differences.push('initiatorId');
+    if (serverCow.targetPlayerId !== clientCow.targetPlayerId) differences.push('targetPlayerId');
+    if (serverCow.targetAnimal !== clientCow.targetAnimal) differences.push('targetAnimal');
+
+    if (differences.length > 0) {
+      console.warn('[CONSISTENCY] Cow state mismatch:', {
+        differences,
+        serverCow,
+        clientCow
+      });
+    }
+  }
+}
+
 // ---- Step 2嚗?撠皜祆蝺??芣????player= ?????芸?? presence嚗?
 void (async function bootstrapPhase2() {
   try {
@@ -286,31 +333,51 @@ void (async function bootstrapPhase2() {
 
         console.log('[DEBUG] Client receiving state update:', {
           stateVersion: incoming,
+          phase: env.payload.state?.phase,
+          turnOwnerId: env.payload.state?.turnOwnerId,
           auction: env.payload.state?.auction,
-          cow: env.payload.state?.cow,  // 添加 cow 調試信息
-          phase: env.payload.state?.phase
+          cow: env.payload.state?.cow,
+          playersCount: env.payload.state?.players?.length,
+          deckCount: env.payload.state?.deck?.length,
+          logCount: env.payload.state?.log?.length
         });
 
+        // 1. 同步核心 Game 狀態
         game.applySnapshot(env.payload.state as never);
 
-        // 同步 auction store 狀態
+        // 2. 同步 Auction 狀態
         if (env.payload.state?.auction) {
+          console.log('[DEBUG] Syncing auction state:', env.payload.state.auction);
           auction.auction = env.payload.state.auction;
-          auction.syncGameAuction();
-          console.log('[DEBUG] Auction state synchronized:', auction.auction);
+        } else {
+          console.log('[DEBUG] Clearing auction state');
+          auction.auction = null;
         }
 
-        // 同步 cow store 狀態
+        // 3. 同步 Cow 狀態
         if (env.payload.state?.cow) {
+          console.log('[DEBUG] Syncing cow state:', env.payload.state.cow);
           cow.initiatorId = env.payload.state.cow.initiatorId;
           cow.targetPlayerId = env.payload.state.cow.targetPlayerId;
           cow.targetAnimal = env.payload.state.cow.targetAnimal;
+          // 注意：secret 字段不會同步，因為它們是 Host-only
+
           console.log('[DEBUG] Cow state synchronized:', {
             initiatorId: cow.initiatorId,
             targetPlayerId: cow.targetPlayerId,
-            targetAnimal: cow.targetAnimal
+            targetAnimal: cow.targetAnimal,
+            hostId: game.hostId,
+            myId: PLAYER
           });
+        } else {
+          console.log('[DEBUG] Clearing cow state');
+          cow.initiatorId = undefined;
+          cow.targetPlayerId = undefined;
+          cow.targetAnimal = undefined;
         }
+
+        // 4. 驗證狀態一致性
+        validateStateConsistency(env.payload.state);
 
         gotSnapshot = true;
       });

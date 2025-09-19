@@ -53,16 +53,16 @@
       </div>
     </section>
 
-    <!-- 階段 3: 秘密出價 (發起者和目標玩家都要操作) -->
+    <!-- 階段 3: 秘密出價 (只有發起者操作) -->
     <section v-else-if="phase === 'cow.commit'" class="view cow-trade">
       <h2>🐄 牛交易：秘密出價</h2>
 
-      <!-- 交易雙方視角 -->
-      <div v-if="isParticipant" class="panel">
+      <!-- 發起者視角 -->
+      <div v-if="isInitiator" class="panel">
         <div class="trade-info">
           <p><strong>交易動物：</strong>{{ tradeAnimal }}</p>
           <p><strong>交易數量：</strong>{{ tradeAmount }} 隻</p>
-          <p><strong>對手：</strong>{{ opponentName }}</p>
+          <p><strong>目標玩家：</strong>{{ targetName }}</p>
         </div>
         <CowConfirmBar
           @confirm="onConfirm"
@@ -70,10 +70,21 @@
         />
       </div>
 
+      <!-- 目標玩家視角 -->
+      <div v-else-if="isTarget" class="panel waiting">
+        <div class="muted">
+          <p>{{ initiatorName }} 正在出價...</p>
+          <div class="trade-preview">
+            <p>交易動物：{{ tradeAnimal }}</p>
+            <p>交易數量：{{ tradeAmount }} 隻</p>
+          </div>
+        </div>
+      </div>
+
       <!-- 其他玩家視角 -->
       <div v-else class="panel waiting">
         <div class="muted">
-          <p>{{ initiatorName }} 和 {{ targetName }} 正在進行秘密出價...</p>
+          <p>{{ initiatorName }} 正在向 {{ targetName }} 出價...</p>
           <div class="trade-preview">
             <p>交易動物：{{ tradeAnimal }}</p>
             <p>交易數量：{{ tradeAmount }} 隻</p>
@@ -82,7 +93,71 @@
       </div>
     </section>
 
-    <!-- 階段 4: 結果揭曉 (所有人可見) -->
+    <!-- 階段 4: 目標玩家選擇 (只有目標玩家操作) -->
+    <section v-else-if="phase === 'cow.choose'" class="view cow-trade">
+      <h2>🐄 牛交易：選擇回應</h2>
+
+      <div v-if="isInitiator" class="panel waiting">
+        <div class="muted">
+          <p>{{ targetName }} 正在考慮是否接受出價...</p>
+          <div class="bid-info">
+            <p><strong>您的出價：</strong>{{ initiatorBid }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div v-else-if="isTarget" class="panel">
+        <div class="trade-info">
+          <p><strong>交易動物：</strong>{{ tradeAnimal }}</p>
+          <p><strong>交易數量：</strong>{{ tradeAmount }} 隻</p>
+          <p><strong>對方出價：</strong>{{ initiatorBid }}</p>
+        </div>
+        <div class="choice-buttons">
+          <button class="primary" @click="onAcceptOffer">接受出價</button>
+          <button class="secondary" @click="onCounterOffer">提出回價</button>
+        </div>
+      </div>
+
+      <div v-else class="panel waiting">
+        <div class="muted">
+          <p>{{ targetName }} 正在決定是否接受 {{ initiatorName }} 的出價...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 階段 5: 目標玩家出價 (只有目標玩家操作) -->
+    <section v-else-if="phase === 'cow.selectMoney'" class="view cow-trade">
+      <h2>🐄 牛交易：回價</h2>
+
+      <div v-if="isInitiator" class="panel waiting">
+        <div class="muted">
+          <p>{{ targetName }} 正在提出回價...</p>
+          <div class="bid-info">
+            <p><strong>您的出價：</strong>{{ initiatorBid }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div v-else-if="isTarget" class="panel">
+        <div class="trade-info">
+          <p><strong>交易動物：</strong>{{ tradeAnimal }}</p>
+          <p><strong>交易數量：</strong>{{ tradeAmount }} 隻</p>
+          <p><strong>對方出價：</strong>{{ initiatorBid }}</p>
+        </div>
+        <CowConfirmBar
+          @confirm="onCounterConfirm"
+          @cancel="onCounterCancel"
+        />
+      </div>
+
+      <div v-else class="panel waiting">
+        <div class="muted">
+          <p>{{ targetName }} 正在向 {{ initiatorName }} 提出回價...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 階段 6: 結果揭曉 (所有人可見) -->
     <section v-else-if="phase === 'cow.reveal'" class="view cow-trade">
       <h2>🐄 牛交易：結果揭曉</h2>
       <div class="panel">
@@ -144,6 +219,10 @@ const emit = defineEmits<{
   'animal-selected': [animal: Animal]
   'confirm': [moneyCardIds: string[]]
   'cancel': []
+  'accept-offer': []
+  'counter-offer': []
+  'counter-confirm': [moneyCardIds: string[]]
+  'counter-cancel': []
 }>()
 
 // 從 URL 獲取當前玩家 ID
@@ -247,6 +326,22 @@ function onConfirm(moneyCardIds: string[]) {
 
 function onCancel() {
   emit('cancel')
+}
+
+function onAcceptOffer() {
+  emit('accept-offer')
+}
+
+function onCounterOffer() {
+  emit('counter-offer')
+}
+
+function onCounterConfirm(moneyCardIds: string[]) {
+  emit('counter-confirm', moneyCardIds)
+}
+
+function onCounterCancel() {
+  emit('counter-cancel')
 }
 </script>
 
