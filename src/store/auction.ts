@@ -37,7 +37,28 @@ export const useAuctionStore = defineStore('auction', {
   }),
 
   getters: {
-    canAuctioneerBuyback: () => false,
+    canAuctioneerBuyback: (state) => {
+      if (!state.auction?.highest) {
+        console.log('[DEBUG] canAuctioneerBuyback: No highest bid');
+        return false;
+      }
+      const game = useGameStore();
+      const auctioneer = game.players.find(p => p.id === state.auction!.auctioneerId);
+      if (!auctioneer) {
+        console.log('[DEBUG] canAuctioneerBuyback: Auctioneer not found');
+        return false;
+      }
+
+      const totalMoney = auctioneer.moneyCards.reduce((sum, card) => sum + card.value, 0);
+      const canBuyback = totalMoney >= state.auction.highest.total;
+      console.log('[DEBUG] canAuctioneerBuyback:', {
+        auctioneerId: state.auction.auctioneerId,
+        auctioneerMoney: totalMoney,
+        highestBid: state.auction.highest.total,
+        canBuyback
+      });
+      return canBuyback;
+    },
   },
 
   actions: {
@@ -161,36 +182,131 @@ export const useAuctionStore = defineStore('auction', {
       this.settle('award');
     },
 
-    settle(mode: 'award' | 'buyback') {
+    hostBuyback() {
+      const game = useGameStore();
+      if (!this.auction || game.phase !== 'auction.closing') {
+        console.log('[DEBUG] hostBuyback: Invalid state', {
+          hasAuction: !!this.auction,
+          phase: game.phase,
+          expectedPhase: 'auction.closing'
+        });
+        return;
+      }
+
+      console.log('[DEBUG] hostBuyback: Starting buyback process', {
+        auctioneerId: this.auction.auctioneerId,
+        animal: this.auction.card?.animal,
+        highestBid: this.auction.highest?.total
+      });
+
+      game.phase = 'auction.buyback';
+      game.appendLog('Auctioneer initiated buyback process.');
+      this.syncGameAuction();
+    },
+
+    confirmBuyback(moneyCardIds: string[]) {
+      const game = useGameStore();
+      if (!this.auction || game.phase !== 'auction.buyback') {
+        console.log('[DEBUG] confirmBuyback: Invalid state', {
+          hasAuction: !!this.auction,
+          phase: game.phase,
+          expectedPhase: 'auction.buyback'
+        });
+        return;
+      }
+
+      const auctioneer = game.players.find(p => p.id === this.auction!.auctioneerId);
+      if (!auctioneer || !this.auction.highest) {
+        console.log('[DEBUG] confirmBuyback: Missing auctioneer or highest bid', {
+          hasAuctioneer: !!auctioneer,
+          hasHighestBid: !!this.auction.highest,
+          auctioneerId: this.auction.auctioneerId,
+          highestPlayerId: this.auction.highest?.playerId
+        });
+        return;
+      }
+
+      // 驗證選擇的金錢總額
+      const selectedTotal = moneyCardIds.reduce((sum, id) => {
+        const card = auctioneer.moneyCards.find(c => c.id === id);
+        return sum + (card?.value || 0);
+      }, 0);
+
+      console.log('[DEBUG] confirmBuyback: Money validation', {
+        selectedCardIds: moneyCardIds,
+        selectedTotal,
+        requiredTotal: this.auction.highest.total,
+        isSufficient: selectedTotal >= this.auction.highest.total
+      });
+
+      if (selectedTotal < this.auction.highest.total) {
+        game.appendLog('Selected money is insufficient for buyback.');
+        return;
+      }
+
+      console.log('[DEBUG] confirmBuyback: Executing buyback transaction');
+      // 執行買回邏輯
+      this.settle('buyback', moneyCardIds);
+    },
+
+    settle(mode: 'award' | 'buyback', moneyCardIds?: string[]) {
       const game = useGameStore();
       if (!this.auction) return;
-      if (mode !== 'award') return;
 
       const a = this.auction;
       const { card, highest, auctioneerId } = a;
       if (!card || !auctioneerId) throw new Error('Invalid auction state');
 
-      const seller = getPlayerById(game.$state, auctioneerId);
+      const auctioneer = getPlayerById(game.$state, auctioneerId);
 
-      if (highest) {
-        const buyer = getPlayerById(game.$state, highest.playerId);
-        const idSet = new Set(highest.moneyCardIds);
-        const moved: MoneyCard[] = [];
-        buyer.moneyCards = buyer.moneyCards.filter((m) => {
-          if (idSet.has(m.id)) {
-            moved.push(m);
+      if (mode === 'buyback' && highest && moneyCardIds) {
+        // 買回邏輯：拍賣者支付錢卡給最高出價者，動物卡回到拍賣者手中
+
+        // 從拍賣者移除選擇的錢卡
+        const selectedCards: MoneyCard[] = [];
+        auctioneer.moneyCards = auctioneer.moneyCards.filter(card => {
+          if (moneyCardIds.includes(card.id)) {
+            selectedCards.push(card);
             return false;
           }
           return true;
         });
-        seller.moneyCards.push(...moved);
-        buyer.animals[card.animal] = (buyer.animals[card.animal] ?? 0) + 1;
-        game.lastAwarded = { playerId: buyer.id, animal: card.animal };
-        game.appendLog(`Award: ${buyer.name} pays ${highest.total} for ${card.animal}.`);
-      } else {
-        seller.animals[card.animal] = (seller.animals[card.animal] ?? 0) + 1;
-        game.lastAwarded = { playerId: seller.id, animal: card.animal };
-        game.appendLog(`No bids: auctioneer ${seller.name} takes ${card.animal}.`);
+
+        // 給最高出價者錢卡
+        const winner = game.players.find(p => p.id === highest.playerId);
+        if (winner) {
+          winner.moneyCards.push(...selectedCards);
+        }
+
+        // 動物卡回到拍賣者手中
+        auctioneer.animals[card.animal] = (auctioneer.animals[card.animal] || 0) + 1;
+
+        game.lastAwarded = { playerId: auctioneer.id, animal: card.animal };
+        game.appendLog(`Buyback: ${auctioneer.name} paid ${highest.total} to keep ${card.animal}.`);
+
+      } else if (mode === 'award') {
+        if (highest) {
+          const buyer = game.players.find(p => p.id === highest.playerId);
+          if (buyer) {
+            const idSet = new Set(highest.moneyCardIds);
+            const moved: MoneyCard[] = [];
+            buyer.moneyCards = buyer.moneyCards.filter((m) => {
+              if (idSet.has(m.id)) {
+                moved.push(m);
+                return false;
+              }
+              return true;
+            });
+            auctioneer.moneyCards.push(...moved);
+            buyer.animals[card.animal] = (buyer.animals[card.animal] || 0) + 1;
+            game.lastAwarded = { playerId: buyer.id, animal: card.animal };
+            game.appendLog(`Award: ${buyer.name} pays ${highest.total} for ${card.animal}.`);
+          }
+        } else {
+          auctioneer.animals[card.animal] = (auctioneer.animals[card.animal] || 0) + 1;
+          game.lastAwarded = { playerId: auctioneer.id, animal: card.animal };
+          game.appendLog(`No bids: auctioneer ${auctioneer.name} takes ${card.animal}.`);
+        }
       }
 
       game.phase = 'turn.end';

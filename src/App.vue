@@ -133,6 +133,40 @@
         </div>
       </div>
     </section>
+
+    <!-- Auction: Buyback Money Selection -->
+    <section v-else-if="phase === 'auction.buyback'" class="view auction">
+      <h2>Auction: Buyback</h2>
+      <div v-if="myId === auctioneerId" class="panel">
+        <div class="buyback-info">
+          <p>選擇金錢卡支付 {{ game.auction?.highest?.total }} 以買回 {{ game.auction?.card?.animal }}</p>
+          <div class="selected-total">
+            已選擇總額：<strong>{{ selectedMoneyTotal }}</strong>
+            <span v-if="selectedMoneyTotal < (game.auction?.highest?.total || 0)" class="insufficient">（不足）</span>
+          </div>
+        </div>
+
+        <MoneyPad
+          :moneyCards="auctioneerMoneyCards"
+          :selectedIds="selectedMoneyIds"
+          @toggle="onToggleMoneyCard"
+        />
+
+        <div class="actions">
+          <button
+            class="primary"
+            :disabled="selectedMoneyTotal < (game.auction?.highest?.total || 0)"
+            @click="onConfirmBuyback"
+          >
+            確認買回
+          </button>
+          <button class="secondary" @click="onCancelBuyback">取消</button>
+        </div>
+      </div>
+      <div v-else class="panel compact-host">
+        <div class="muted">Waiting for auctioneer to select money for buyback…</div>
+      </div>
+    </section>
     <!-- Turn End -->
     
 
@@ -170,6 +204,7 @@ import Hud from '@/components/Hud.vue';
 import TurnChoice from '@/components/TurnChoice.vue';
 import AuctionBidderView from '@/components/Auction/AuctionBidderView.vue';
 import AuctionHostView from '@/components/Auction/AuctionHostView.vue';
+import MoneyPad from '@/components/MoneyPad.vue';
 
 import { useGameStore } from '@/store/game';
 import { useAuctionStore } from '@/store/auction';
@@ -266,6 +301,21 @@ const nextPlayerName = computed(() => {
 });
 const finalScores = computed(() => game.computeFinalScores());
 
+// Buyback related state and computed properties
+const auctioneerMoneyCards = computed(() => {
+  const auctioneer = players.value.find(p => p.id === auctioneerId.value);
+  return auctioneer?.moneyCards || [];
+});
+
+const selectedMoneyIds = ref<string[]>([]);
+
+const selectedMoneyTotal = computed(() => {
+  return selectedMoneyIds.value.reduce((sum, id) => {
+    const card = auctioneerMoneyCards.value.find(c => c.id === id);
+    return sum + (card?.value || 0);
+  }, 0);
+});
+
 // 動畫鍵值，用於在最高出價更新時重新觸發動畫
 const bidderHighlightKey = ref(0);
 
@@ -303,8 +353,13 @@ function onHostAward() {
 }
 
 function onHostBuyback() {
-  // Not implemented in Phase 2
-  game.appendLog('(Dev) Buyback will be implemented in Phase 3; skipping for now.');
+  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+  console.log('[DEBUG] onHostBuyback: Initiating buyback', {
+    playerId: myId,
+    currentPhase: phase.value,
+    canBuyback: canBuyback.value
+  });
+  void broadcast.publish(Msg.Action.HostBuyback, { playerId: myId });
 }
 
 function nextTurn() {
@@ -325,6 +380,55 @@ function endNowForDev() {
   // Dev helper: compute scores and jump to game end
   game.computeFinalScores();
   game.phase = 'game.end' as any;
+}
+
+function onToggleMoneyCard(cardId: string) {
+  const index = selectedMoneyIds.value.indexOf(cardId);
+  if (index > -1) {
+    selectedMoneyIds.value.splice(index, 1);
+    console.log('[DEBUG] onToggleMoneyCard: Deselected card', cardId);
+  } else {
+    selectedMoneyIds.value.push(cardId);
+    console.log('[DEBUG] onToggleMoneyCard: Selected card', cardId);
+  }
+  console.log('[DEBUG] onToggleMoneyCard: Current selection', {
+    selectedIds: selectedMoneyIds.value,
+    selectedTotal: selectedMoneyTotal.value,
+    requiredTotal: game.auction?.highest?.total || 0
+  });
+}
+
+function onConfirmBuyback() {
+  if (selectedMoneyTotal.value < (game.auction?.highest?.total || 0)) {
+    console.log('[DEBUG] onConfirmBuyback: Insufficient funds', {
+      selectedTotal: selectedMoneyTotal.value,
+      requiredTotal: game.auction?.highest?.total || 0
+    });
+    return;
+  }
+  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+  console.log('[DEBUG] onConfirmBuyback: Confirming buyback', {
+    playerId: myId,
+    selectedCardIds: selectedMoneyIds.value,
+    selectedTotal: selectedMoneyTotal.value,
+    animal: game.auction?.card?.animal,
+    highestBid: game.auction?.highest?.total
+  });
+  void broadcast.publish(Msg.Action.ConfirmBuyback, {
+    playerId: myId,
+    moneyCardIds: selectedMoneyIds.value
+  });
+  selectedMoneyIds.value = []; // Reset selection
+}
+
+function onCancelBuyback() {
+  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+  console.log('[DEBUG] onCancelBuyback: Cancelling buyback', {
+    playerId: myId,
+    previouslySelectedCards: selectedMoneyIds.value
+  });
+  void broadcast.publish(Msg.Action.CancelBuyback, { playerId: myId });
+  selectedMoneyIds.value = []; // Reset selection
 }
 
 </script>

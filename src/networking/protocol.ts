@@ -18,7 +18,9 @@ export const Msg = {
     SelectCowAnimal: 'action.selectCowAnimal',
     CommitCowTrade: 'action.commitCowTrade',
     HostAward: 'action.hostAward',
-    HostBuyback: 'action.hostBuyback'
+    HostBuyback: 'action.hostBuyback',
+    ConfirmBuyback: 'action.confirmBuyback',
+    CancelBuyback: 'action.cancelBuyback'
   },
   State: { Update: 'state.update' },
   System: {
@@ -51,6 +53,8 @@ export interface PayloadByType {
   [Msg.Action.CommitCowTrade]: { playerId: string; moneyCardIds: string[] };
   [Msg.Action.HostAward]: { playerId: string };
   [Msg.Action.HostBuyback]: { playerId: string };
+  [Msg.Action.ConfirmBuyback]: { playerId: string; moneyCardIds: string[] };
+  [Msg.Action.CancelBuyback]: { playerId: string };
 
   // State.*
   [Msg.State.Update]: { state: GameState };
