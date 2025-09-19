@@ -113,13 +113,22 @@ export const useCowStore = defineStore('cow', {
   actions: {
     syncGameCow() {
       const game = useGameStore();
-      // 同步到 game store
-      (game as any).$state.cow = {
+      // 同步到 game store - 不使用 $state 直接賦值，而是設置到 cow 屬性
+      (game as any).cow = {
         initiatorId: this.initiatorId,
         targetPlayerId: this.targetPlayerId,
         targetAnimal: this.targetAnimal,
         // 注意：secret 不應該同步到所有玩家，只在 host 端記憶
       };
+      // 強制觸發 game store 的更新以廣播狀態變化
+      game.bumpVersion();
+      console.log('[DEBUG] syncGameCow called:', {
+        initiatorId: this.initiatorId,
+        targetPlayerId: this.targetPlayerId,
+        targetAnimal: this.targetAnimal,
+        gamePhase: game.phase,
+        cowState: (game as any).cow
+      });
     },
 
     // 發起牛交易
