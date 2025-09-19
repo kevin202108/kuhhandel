@@ -76,7 +76,7 @@
       <!-- Auctioneer: Fixed prominent display at top -->
       <div class="panel auctioneer-info">
         <div class="auctioneer-header">
-          <strong>{{ nameOf(auctioneerId) }}</strong> <span class="auctioneer-badge">AUCTIONEER</span>
+          <strong>{{ nameOf(auctioneerId) }}</strong> <span class="auctioneer-badge">拍賣者</span>
         </div>
         <div class="auction-details">
           <div class="animal-display">
@@ -86,6 +86,10 @@
           <div class="highest-bid">
             <span class="label">目前最高：</span>
             <strong class="highest-amount">{{ game.auction?.highest?.total ?? 0 }}</strong>
+            <span v-if="game.auction?.highest" :key="bidderHighlightKey" class="highest-bidder-highlight">
+              🚀 <strong>{{ nameOf(game.auction.highest.playerId) }}</strong> 領先中!
+            </span>
+            <span v-else class="no-bid">無人出價</span>
           </div>
         </div>
       </div>
@@ -100,6 +104,7 @@
             v-if="p.id === myId && myId !== auctioneerId"
             :self="p"
             :highest="game.auction?.highest"
+            :nameOf="nameOf"
             @place-bid="(ids:string[]) => onPlaceBid(p.id, ids)"
             @pass="() => onPassBid(p.id)"
           />
@@ -223,6 +228,13 @@ onUnmounted(() => {
   if (t) window.clearInterval(t);
 });
 
+// 監聽最高出價更新，觸發動畫重新播放
+watch(() => game.auction?.highest, (newHighest, oldHighest) => {
+  if (newHighest && newHighest !== oldHighest) {
+    bidderHighlightKey.value += 1;
+  }
+}, { deep: true });
+
 /** --------------------------
  * Setup: Start game (host-only, uses presence)
  * -------------------------- */
@@ -253,6 +265,9 @@ const nextPlayerName = computed(() => {
   return next?.name ?? '';
 });
 const finalScores = computed(() => game.computeFinalScores());
+
+// 動畫鍵值，用於在最高出價更新時重新觸發動畫
+const bidderHighlightKey = ref(0);
 
 function nameOf(id: string) {
   return players.value.find(p => p.id === id)?.name ?? id;
@@ -465,6 +480,30 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   font-weight: 800;
 }
 
+.highest-bidder-highlight {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  margin-left: 12px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  padding: 4px 12px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  animation: bounce-in 0.6s ease-out;
+}
+
+.highest-bidder-highlight strong {
+  color: #ffffff;
+  font-size: 18px;
+}
+
+.no-bid {
+  color: #9ca3af;
+  font-size: 14px;
+  font-style: italic;
+  margin-left: 8px;
+}
+
 @keyframes pulse {
   0%, 100% {
     transform: scale(1);
@@ -473,6 +512,21 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   50% {
     transform: scale(1.05);
     opacity: 0.8;
+  }
+}
+
+@keyframes bounce-in {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
   }
 }
 
