@@ -255,17 +255,45 @@ void (async function bootstrapPhase2() {
         auction.confirmBuyback(moneyCardIds);
       });
 
-      // CancelBuyback (host-only, auctioneer only)
+      // CancelBuyback (host-only, supports both auction and cow trade cancelling)
       const offCancelBuyback = broadcast.subscribe(Msg.Action.CancelBuyback, (env) => {
         if (!accept(env.type, env.senderId, env.actionId, env.ts)) return;
-        if (game.phase !== 'auction.buyback' || !game.auction) return;
-        const auctioneer = game.auction?.auctioneerId;
-        if (env.senderId !== auctioneer) return;
 
-        console.log('[DEBUG] Host processing CancelBuyback');
-        game.phase = 'auction.closing';
-        game.appendLog('Auctioneer cancelled buyback.');
-        auction.syncGameAuction();
+        // Handle auction buyback cancellation
+        if (game.phase === 'auction.buyback') {
+          const auctioneer = game.auction?.auctioneerId;
+          if (env.senderId !== auctioneer) return;
+
+          console.log('[DEBUG] Host processing Auction CancelBuyback');
+          game.phase = 'auction.closing';
+          game.appendLog('Auctioneer cancelled buyback.');
+          auction.syncGameAuction();
+          return;
+        }
+
+        // Handle cow trade cancellation
+        const cowPhases = ['cow.selectTarget', 'cow.selectAnimal', 'cow.commit', 'cow.choose', 'cow.selectMoney', 'cow.reveal', 'cow.settlement'];
+        if (cowPhases.includes(game.phase)) {
+          // Only initiator can cancel cow trade
+          if (!cow.initiatorId || env.senderId !== cow.initiatorId) return;
+
+          console.log('[DEBUG] Host processing Cow Trade Cancel');
+
+          // Clear cow trade state
+          cow.initiatorId = undefined;
+          cow.targetPlayerId = undefined;
+          cow.targetAnimal = undefined;
+          cow.initiatorSecret = undefined;
+          cow.targetSecret = undefined;
+          cow.initiatorCardCount = undefined;
+          cow.targetCardCount = undefined;
+
+          // Return to turn.choice
+          game.phase = 'turn.choice';
+          game.appendLog('Cow trade cancelled, returning to turn choice.');
+          game.bumpVersion();
+          return;
+        }
       });
 
       // Cow Trade actions (host-only processing)
