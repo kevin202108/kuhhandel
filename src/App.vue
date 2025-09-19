@@ -167,6 +167,49 @@
         <div class="muted">Waiting for auctioneer to select money for buyback…</div>
       </div>
     </section>
+
+    <!-- Cow Trade: Select Target -->
+    <section v-else-if="phase === 'cow.selectTarget'" class="view cow-trade">
+      <h2>🐄 牛交易：選擇對象</h2>
+      <CowTargetPicker
+        @target-selected="onCowTargetSelected"
+        @cancel="onCowCancelled"
+      />
+    </section>
+
+    <!-- Cow Trade: Select Animal -->
+    <section v-else-if="phase === 'cow.selectAnimal'" class="view cow-trade">
+      <h2>🐄 牛交易：選擇動物</h2>
+      <CowAnimalPicker
+        @animal-selected="onCowAnimalSelected"
+        @cancel="onCowCancelled"
+      />
+    </section>
+
+    <!-- Cow Trade: Commit Secret Bids -->
+    <section v-else-if="phase === 'cow.commit'" class="view cow-trade">
+      <h2>🐄 牛交易：秘密出價</h2>
+      <CowConfirmBar
+        @confirm="onCowConfirm"
+        @cancel="onCowCancelled"
+      />
+    </section>
+
+    <!-- Cow Trade: Reveal and Settle -->
+    <section v-else-if="phase === 'cow.reveal'" class="view cow-trade">
+      <h2>🐄 牛交易：結果揭曉</h2>
+      <div class="panel">
+        <div class="muted">正在處理交易結果...</div>
+      </div>
+    </section>
+
+    <!-- Cow Trade: Settlement -->
+    <section v-else-if="phase === 'cow.settlement'" class="view cow-trade">
+      <h2>🐄 牛交易：結算</h2>
+      <div class="panel">
+        <div class="muted">交易已完成</div>
+      </div>
+    </section>
     <!-- Turn End -->
     
 
@@ -208,6 +251,7 @@ import MoneyPad from '@/components/MoneyPad.vue';
 
 import { useGameStore } from '@/store/game';
 import { useAuctionStore } from '@/store/auction';
+import { useCowStore } from '@/store/cow';
 import broadcast from '@/services/broadcast';
 import { Msg } from '@/networking/protocol';
 import type { Phase, Player } from '@/types/game';
@@ -333,8 +377,9 @@ function onChooseAuction() {
 }
 
 function onChooseCowTrade() {
-  // Not implemented in Phase 2
-  game.appendLog('Cow Trade will be implemented in a later phase; use Auction for now.');
+  const cowStore = useCowStore();
+  if (!cowStore.canInitiateCowTrade) return;
+  cowStore.initiateCowTrade();
 }
 
 function onPlaceBid(playerId: string, moneyCardIds: string[]) {
@@ -429,6 +474,31 @@ function onCancelBuyback() {
   });
   void broadcast.publish(Msg.Action.CancelBuyback, { playerId: myId });
   selectedMoneyIds.value = []; // Reset selection
+}
+
+// Cow Trade event handlers
+function onCowTargetSelected(targetId: string) {
+  const cowStore = useCowStore();
+  cowStore.selectTarget(targetId);
+}
+
+function onCowAnimalSelected(animal: import('@/types/game').Animal) {
+  const cowStore = useCowStore();
+  cowStore.selectAnimal(animal);
+}
+
+function onCowConfirm(moneyCardIds: string[]) {
+  const cowStore = useCowStore();
+  if (cowStore.initiatorId === myId) {
+    cowStore.commitInitiator(moneyCardIds);
+  } else {
+    cowStore.commitTarget(moneyCardIds);
+  }
+}
+
+function onCowCancelled() {
+  const cowStore = useCowStore();
+  cowStore.cancelCowTrade();
 }
 
 </script>

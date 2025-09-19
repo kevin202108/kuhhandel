@@ -191,11 +191,27 @@ export const useGameStore = defineStore('game', {
       return state.deck.length > 0;
     },
     /**
-     * 當前玩家是否有錢（README 指定的最小判斷）
+     * 當前玩家是否可以發起牛交易（完整的規則檢查）
      */
     canChooseCowTrade(): boolean {
       const me = this.activePlayer;
-      return !!me && me.moneyCards.length > 0;
+      if (!me || this.phase !== 'turn.choice') return false;
+
+      // 第一回合不能牛交易
+      if (this.players.every(p => Object.values(p.animals).reduce((a, b) => a + b, 0) === 0)) {
+        return false;
+      }
+
+      // 必須有錢卡
+      if (me.moneyCards.length === 0) return false;
+
+      // 必須有其他玩家持有相同動物
+      return this.players.some(otherPlayer => {
+        if (otherPlayer.id === me.id) return false;
+        return Object.keys(me.animals).some(animal =>
+          (me.animals[animal as Animal] || 0) > 0 && (otherPlayer.animals[animal as Animal] || 0) > 0
+        );
+      });
     },
     /**
      * 是否已被鎖（任一玩家達成 4 張）

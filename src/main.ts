@@ -15,6 +15,7 @@ import { makeEnvelope, Msg, type MsgType } from '@/networking/protocol';
 import broadcast from '@/services/broadcast';
 import { useGameStore } from '@/store/game';
 import { useAuctionStore } from '@/store/auction';
+import { useCowStore } from '@/store/cow';
 import { getHostId } from '@/services/host-election';
 
 // ---- URL flags嚗? README 閬?銝?湛?
@@ -67,6 +68,7 @@ void (async function bootstrapPhase2() {
 
     const game = useGameStore();
     const auction = useAuctionStore();
+    const cow = useCowStore();
 
     // Get current members and elect initial host
     let members = await presence.getMembers(ROOM);
