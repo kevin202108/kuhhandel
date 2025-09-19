@@ -380,9 +380,17 @@ function onChooseAuction() {
 }
 
 function onChooseCowTrade() {
-  const cowStore = useCowStore();
-  if (!cowStore.canInitiateCowTrade) return;
-  cowStore.initiateCowTrade();
+  console.log('[DEBUG] onChooseCowTrade called', {
+    currentPhase: game.phase,
+    myId
+  });
+
+  const myId_local = myId; // needed for closure
+  void broadcast.publish(Msg.Action.ChooseCowTrade, {
+    playerId: myId_local
+  }, { actionId: newId() });
+
+  console.log('[DEBUG] onChooseCowTrade broadcast published');
 }
 
 function onPlaceBid(playerId: string, moneyCardIds: string[]) {
@@ -481,22 +489,60 @@ function onCancelBuyback() {
 
 // Cow Trade event handlers
 function onCowTargetSelected(targetId: string) {
-  const cowStore = useCowStore();
-  cowStore.selectTarget(targetId);
+  console.log('[DEBUG] onCowTargetSelected called', {
+    targetId,
+    currentPhase: game.phase
+  });
+
+  const myId_local = myId; // needed for closure
+  void broadcast.publish(Msg.Action.SelectCowTarget, {
+    playerId: myId_local,
+    targetId: targetId
+  }, { actionId: newId() });
+
+  console.log('[DEBUG] onCowTargetSelected broadcast published');
 }
 
 function onCowAnimalSelected(animal: import('@/types/game').Animal) {
-  const cowStore = useCowStore();
-  cowStore.selectAnimal(animal);
+  console.log('[DEBUG] onCowAnimalSelected called', {
+    animal,
+    currentPhase: game.phase
+  });
+
+  const myId_local = myId; // needed for closure
+  void broadcast.publish(Msg.Action.SelectCowAnimal, {
+    playerId: myId_local,
+    animal: animal
+  }, { actionId: newId() });
+
+  console.log('[DEBUG] onCowAnimalSelected broadcast published');
 }
 
 function onCowConfirm(moneyCardIds: string[]) {
-  const cowStore = useCowStore();
-  if (cowStore.initiatorId === myId) {
-    cowStore.commitInitiator(moneyCardIds);
+  console.log('[DEBUG] onCowConfirm called', {
+    myId,
+    moneyCardIds,
+    isInitiator: useCowStore().initiatorId === myId,
+    targetId: useCowStore().targetPlayerId,
+    currentPhase: game.phase
+  });
+
+  const myId_local = myId; // needed for closure
+  const moneyCardIds_local = moneyCardIds; // needed for closure
+
+  if (useCowStore().initiatorId === myId) {
+    void broadcast.publish(Msg.Action.CommitCowTrade, {
+      playerId: myId_local,
+      moneyCardIds: moneyCardIds_local
+    }, { actionId: newId() });
   } else {
-    cowStore.commitTarget(moneyCardIds);
+    void broadcast.publish(Msg.Action.CommitCowTrade, {
+      playerId: myId_local,
+      moneyCardIds: moneyCardIds_local
+    }, { actionId: newId() });
   }
+
+  console.log('[DEBUG] onCowConfirm broadcast published');
 }
 
 function onCowCancelled() {

@@ -220,6 +220,47 @@ void (async function bootstrapPhase2() {
         game.appendLog('Auctioneer cancelled buyback.');
         auction.syncGameAuction();
       });
+
+      // Cow Trade actions (host-only processing)
+      const offChooseCowTrade = broadcast.subscribe(Msg.Action.ChooseCowTrade, (env) => {
+        if (!accept(env.type, env.senderId, env.actionId, env.ts)) return;
+        const { playerId } = env.payload as { playerId: string };
+        if (game.phase !== 'turn.choice' || env.senderId !== game.turnOwnerId) return;
+        if (env.senderId !== playerId) return;
+        console.log('[DEBUG] Host processing ChooseCowTrade for', playerId);
+        cow.initiateCowTrade();
+      });
+
+      const offSelectCowTarget = broadcast.subscribe(Msg.Action.SelectCowTarget, (env) => {
+        if (!accept(env.type, env.senderId, env.actionId, env.ts)) return;
+        const { playerId, targetId } = env.payload as { playerId: string; targetId: string };
+        if (game.phase !== 'cow.selectTarget' || env.senderId !== playerId || playerId !== cow.initiatorId) return;
+        console.log('[DEBUG] Host processing SelectCowTarget', { playerId, targetId });
+        cow.selectTarget(targetId);
+      });
+
+      const offSelectCowAnimal = broadcast.subscribe(Msg.Action.SelectCowAnimal, (env) => {
+        if (!accept(env.type, env.senderId, env.actionId, env.ts)) return;
+        const { playerId, animal } = env.payload as { playerId: string; animal: import('@/types/game').Animal };
+        if (game.phase !== 'cow.selectAnimal' || env.senderId !== playerId || playerId !== cow.initiatorId) return;
+        console.log('[DEBUG] Host processing SelectCowAnimal', { playerId, animal });
+        cow.selectAnimal(animal);
+      });
+
+      const offCommitCowTrade = broadcast.subscribe(Msg.Action.CommitCowTrade, (env) => {
+        if (!accept(env.type, env.senderId, env.actionId, env.ts)) return;
+        const { playerId, moneyCardIds } = env.payload as { playerId: string; moneyCardIds: string[] };
+        if (game.phase !== 'cow.commit' || env.senderId !== playerId) return;
+        if (playerId === cow.initiatorId) {
+          console.log('[DEBUG] Host processing CommitCowTrade for initiator', { playerId, moneyCardIds });
+          cow.commitInitiator(moneyCardIds);
+        } else if (playerId === cow.targetPlayerId) {
+          console.log('[DEBUG] Host processing CommitCowTrade for target', { playerId, moneyCardIds });
+          cow.commitTarget(moneyCardIds);
+        } else {
+          console.log('[DEBUG] Host ignoring CommitCowTrade for non-participant', playerId);
+        }
+      });
       // Host: broadcast full snapshot on any mutation
       game.$subscribe((_mutation, state) => {
         const plain = JSON.parse(JSON.stringify(state));
