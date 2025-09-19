@@ -191,11 +191,24 @@ export const useGameStore = defineStore('game', {
       return state.deck.length > 0;
     },
     /**
-     * 當前玩家是否有錢（README 指定的最小判斷）
+     * 當前玩家是否有錢，且是否有其他玩家持有相同動物
      */
     canChooseCowTrade(): boolean {
       const me = this.activePlayer;
-      return !!me && me.moneyCards.length > 0;
+      if (!me || me.moneyCards.length === 0) return false;
+
+      // 檢查是否有其他玩家與當前玩家持有相同動物
+      const myAnimals = Object.keys(me.animals).filter(animal => me.animals[animal as Animal] > 0) as Animal[];
+
+      return this.players.some(otherPlayer => {
+        // 排除自己
+        if (otherPlayer.id === me.id) return false;
+
+        // 檢查是否共享任何動物
+        return myAnimals.some(animal =>
+          otherPlayer.animals[animal] > 0
+        );
+      });
     },
     /**
      * 是否已被鎖（任一玩家達成 4 張）
