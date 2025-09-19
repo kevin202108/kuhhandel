@@ -39,19 +39,27 @@ export const useAuctionStore = defineStore('auction', {
   getters: {
     canAuctioneerBuyback: (state) => {
       if (!state.auction?.highest) {
-        console.log('[DEBUG] canAuctioneerBuyback: No highest bid');
+        console.log('[DEBUG] canAuctioneerBuyback: No highest bid', {
+          hasAuction: !!state.auction,
+          auctioneerId: state.auction?.auctioneerId,
+          highest: state.auction?.highest
+        });
         return false;
       }
       const game = useGameStore();
       const auctioneer = game.players.find(p => p.id === state.auction!.auctioneerId);
+
       if (!auctioneer) {
-        console.log('[DEBUG] canAuctioneerBuyback: Auctioneer not found');
+        console.log('[DEBUG] canAuctioneerBuyback: Auctioneer not found', {
+          auctioneerId: state.auction?.auctioneerId,
+          availablePlayers: game.players.map(p => p.id)
+        });
         return false;
       }
 
       const totalMoney = auctioneer.moneyCards.reduce((sum, card) => sum + card.value, 0);
       const canBuyback = totalMoney >= state.auction.highest.total;
-      console.log('[DEBUG] canAuctioneerBuyback:', {
+      console.log('[DEBUG] canAuctioneerBuyback: RETURN VALUE =', canBuyback, {
         auctioneerId: state.auction.auctioneerId,
         auctioneerMoney: totalMoney,
         highestBid: state.auction.highest.total,

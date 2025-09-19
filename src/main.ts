@@ -240,7 +240,22 @@ void (async function bootstrapPhase2() {
         if (env.senderId !== game.hostId) return;
         const incoming = env.stateVersion ?? 0;
         if (incoming <= game.stateVersion) return;
+
+        console.log('[DEBUG] Client receiving state update:', {
+          stateVersion: incoming,
+          auction: env.payload.state?.auction,
+          phase: env.payload.state?.phase
+        });
+
         game.applySnapshot(env.payload.state as never);
+
+        // 同步 auction store 狀態
+        if (env.payload.state?.auction) {
+          auction.auction = env.payload.state.auction;
+          auction.syncGameAuction();
+          console.log('[DEBUG] Auction state synchronized:', auction.auction);
+        }
+
         gotSnapshot = true;
       });
       setTimeout(() => {
