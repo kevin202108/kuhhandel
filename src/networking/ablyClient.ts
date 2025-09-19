@@ -8,11 +8,7 @@ import type { Envelope, MsgType } from '@/networking/protocol';
  */
 let client: Ably.Types.RealtimePromise | null = null;
 
-function requireApiKey(): string {
-  const key = import.meta.env.VITE_ABLY_API_KEY as string | undefined;
-  if (!key) throw new Error('[Ably] Missing VITE_ABLY_API_KEY');
-  return key;
-}
+
 
 /** 將 roomId 正規化成 README 規範的 [a-z0-9_-]{1,24} */
 function normalizeId(raw: string): string {
@@ -28,7 +24,7 @@ function channelName(roomId: string): string {
 export function initAbly(playerId: string): Ably.Types.RealtimePromise {
   if (client) return client;
   client = new Ably.Realtime.Promise({
-    key: requireApiKey(),
+    authUrl: "/.netlify/functions/ably",
     clientId: normalizeId(playerId),
   });
   return client!;
