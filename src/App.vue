@@ -692,6 +692,7 @@ function onSelectCowAnimal(animal: string) {
 function onCommitCowTrade(moneyCardIds: string[]) {
   const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
   console.log('[CowTrade] Committing trade:', moneyCardIds);
+  console.log('[CowTrade] Current cow state:', game.cow);
 
   if (game.cow) {
     if (myId === game.cow.initiatorId) {
