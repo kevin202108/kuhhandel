@@ -35,11 +35,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useCowStore } from '@/store/cow';
 import { useGameStore } from '@/store/game';
 import MoneyPad from '@/components/MoneyPad.vue';
 import type { Animal, Player, MoneyCard } from '@/types/game';
+
+// 組件掛載時調試
+onMounted(() => {
+  console.log('[DEBUG] CowConfirmBar mounted', {
+    isInitiator: isInitiator.value,
+    availableMoneyCards: availableMoneyCards.value,
+    availableMoneyCardsLength: availableMoneyCards.value.length
+  });
+});
 
 const props = defineProps<{
   onConfirm: (moneyCardIds: string[]) => void;
@@ -117,6 +126,11 @@ const onToggleMoneyCard = (cardId: string) => {
 };
 
 const confirmTrade = () => {
+  console.log('[DEBUG] CowConfirmBar confirmTrade called', {
+    isInitiator: isInitiator.value,
+    selectedIds: selectedIds.value,
+    selectedIdsLength: selectedIds.value.length
+  });
   if (selectedIds.value.length > 0) {
     props.onConfirm(selectedIds.value);
   }

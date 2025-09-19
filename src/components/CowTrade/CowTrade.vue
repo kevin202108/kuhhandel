@@ -325,6 +325,11 @@ function onAnimalSelected(animal: Animal) {
 }
 
 function onConfirm(moneyCardIds: string[]) {
+  console.log('[DEBUG] CowTrade onConfirm called', {
+    isInitiator: isInitiator.value,
+    isTarget: isTarget.value,
+    moneyCardIds: moneyCardIds
+  });
   emit('confirm', moneyCardIds)
 }
 
