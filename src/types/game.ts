@@ -44,6 +44,8 @@ export interface CowTradeState {
   targetAnimal?: Animal;
   initiatorSecret?: string[]; // moneyCardIds（僅 Host 記憶體，不持久化）
   targetSecret?: string[];
+  initiatorCardCount?: number;
+  targetCardCount?: number;
 }
 
 export interface GameState {

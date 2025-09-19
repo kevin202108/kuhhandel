@@ -102,7 +102,7 @@
         <div class="muted">
           <p>{{ targetName }} 正在考慮是否接受出價...</p>
           <div class="bid-info">
-            <p><strong>您的出價：</strong>{{ initiatorBid }}</p>
+            <p><strong>您的出價：</strong>{{ initiatorCardCount }} 張牌</p>
           </div>
         </div>
       </div>
@@ -134,7 +134,7 @@
         <div class="muted">
           <p>{{ targetName }} 正在提出回價...</p>
           <div class="bid-info">
-            <p><strong>您的出價：</strong>{{ initiatorBid }}</p>
+            <p><strong>您的出價：</strong>{{ initiatorCardCount }} 張牌</p>
           </div>
         </div>
       </div>
@@ -143,7 +143,7 @@
         <div class="trade-info">
           <p><strong>交易動物：</strong>{{ tradeAnimal }}</p>
           <p><strong>交易數量：</strong>{{ tradeAmount }} 隻</p>
-          <p><strong>對方出價：</strong>{{ initiatorBid }}</p>
+          <p><strong>對方出價：</strong>{{ initiatorCardCount }} 張牌</p>
         </div>
         <CowConfirmBar
           :playerId="cow.targetPlayerId"
@@ -294,7 +294,7 @@ const initiatorBid = computed(() => {
 })
 
 const initiatorCardCount = computed(() => {
-  return cow.initiatorSecret?.length || 0
+  return cow.initiatorCardCount || 0
 })
 
 const targetBid = computed(() => {
@@ -305,6 +305,10 @@ const targetBid = computed(() => {
     const card = player.moneyCards.find(c => c.id === id)
     return sum + (card?.value || 0)
   }, 0)
+})
+
+const targetCardCount = computed(() => {
+  return cow.targetCardCount || 0
 })
 
 // 勝者判斷

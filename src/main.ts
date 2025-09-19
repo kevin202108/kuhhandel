@@ -381,12 +381,16 @@ void (async function bootstrapPhase2() {
           cow.initiatorId = env.payload.state.cow.initiatorId;
           cow.targetPlayerId = env.payload.state.cow.targetPlayerId;
           cow.targetAnimal = env.payload.state.cow.targetAnimal;
+          cow.initiatorCardCount = env.payload.state.cow.initiatorCardCount;
+          cow.targetCardCount = env.payload.state.cow.targetCardCount;
           // 注意：secret 字段不會同步，因為它們是 Host-only
 
           console.log('[DEBUG] Cow state synchronized:', {
             initiatorId: cow.initiatorId,
             targetPlayerId: cow.targetPlayerId,
             targetAnimal: cow.targetAnimal,
+            initiatorCardCount: cow.initiatorCardCount,
+            targetCardCount: cow.targetCardCount,
             hostId: game.hostId,
             myId: PLAYER
           });
@@ -395,6 +399,8 @@ void (async function bootstrapPhase2() {
           cow.initiatorId = undefined;
           cow.targetPlayerId = undefined;
           cow.targetAnimal = undefined;
+          cow.initiatorCardCount = undefined;
+          cow.targetCardCount = undefined;
         }
 
         // 4. 驗證狀態一致性

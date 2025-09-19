@@ -32,6 +32,8 @@ export const useCowStore = defineStore('cow', {
     targetAnimal: undefined,
     initiatorSecret: undefined,
     targetSecret: undefined,
+    initiatorCardCount: undefined,
+    targetCardCount: undefined,
   }),
 
   getters: {
@@ -118,6 +120,8 @@ export const useCowStore = defineStore('cow', {
         initiatorId: this.initiatorId,
         targetPlayerId: this.targetPlayerId,
         targetAnimal: this.targetAnimal,
+        initiatorCardCount: this.initiatorCardCount,
+        targetCardCount: this.targetCardCount,
         // 注意：secret 不應該同步到所有玩家，只在 host 端記憶
       };
       // 強制觸發 game store 的更新以廣播狀態變化
@@ -126,6 +130,8 @@ export const useCowStore = defineStore('cow', {
         initiatorId: this.initiatorId,
         targetPlayerId: this.targetPlayerId,
         targetAnimal: this.targetAnimal,
+        initiatorCardCount: this.initiatorCardCount,
+        targetCardCount: this.targetCardCount,
         gamePhase: game.phase,
         cowState: (game as any).cow
       });
@@ -164,6 +170,7 @@ export const useCowStore = defineStore('cow', {
     commitInitiator(moneyCardIds: string[]) {
       const game = useGameStore();
       this.initiatorSecret = moneyCardIds;
+      this.initiatorCardCount = moneyCardIds.length;
       this.syncGameCow();
       game.phase = 'cow.choose';
     },
@@ -192,6 +199,7 @@ export const useCowStore = defineStore('cow', {
         availablePlayerIds: game.players.map(p => p.id)
       });
       this.targetSecret = moneyCardIds;
+      this.targetCardCount = moneyCardIds.length;
       this.syncGameCow();
       game.phase = 'cow.reveal';
       this.revealAndSettle();
@@ -327,6 +335,8 @@ export const useCowStore = defineStore('cow', {
       this.targetAnimal = undefined;
       this.initiatorSecret = undefined;
       this.targetSecret = undefined;
+      this.initiatorCardCount = undefined;
+      this.targetCardCount = undefined;
     },
   },
 });
