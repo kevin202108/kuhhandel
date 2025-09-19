@@ -30,7 +30,7 @@
       >
         確認選擇
       </button>
-      <button class="secondary" @click="cancelSelection">取消</button>
+      <!-- <button class="secondary" @click="cancelSelection">取消</button> -->
     </div>
   </div>
 </template>
