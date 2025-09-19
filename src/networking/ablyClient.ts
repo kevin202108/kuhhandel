@@ -100,6 +100,17 @@ export const presence = {
       data: (m.data ?? {}) as { playerId: string; name: string },
     }));
   },
+  subscribePresenceEvents(roomId: string, onEvent: (action: 'enter' | 'leave', member: { id: string; data: { playerId: string; name: string } }) => void): () => void {
+    const ch = getChannel(roomId);
+    const handler = (msg: Ably.Types.PresenceMessage) => {
+      onEvent(msg.action as 'enter' | 'leave', {
+        id: msg.clientId ?? '',
+        data: (msg.data ?? {}) as { playerId: string; name: string },
+      });
+    };
+    ch.presence.subscribe(handler);
+    return () => ch.presence.unsubscribe(handler);
+  },
 };
 
 /** 關閉連線（測試/離場可用） */

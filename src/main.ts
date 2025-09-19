@@ -67,9 +67,40 @@ void (async function bootstrapPhase2() {
 
     const game = useGameStore();
     const auction = useAuctionStore();
-    const members = await presence.getMembers(ROOM);
-    const elected = getHostId(members);
-    if (elected) game.setHostId(elected);
+
+    // Get current members and elect initial host
+    let members = await presence.getMembers(ROOM);
+    let elected = getHostId(members);
+    if (elected) {
+      game.setHostId(elected);
+    }
+
+    // Monitor presence changes to re-elect host
+    const offPresence = presence.subscribePresenceEvents(ROOM, async (action, member) => {
+      if (action === 'enter' || action === 'leave') {
+        // Refresh members list
+        members = await presence.getMembers(ROOM);
+        const newHost = getHostId(members);
+        if (newHost && newHost !== game.hostId) {
+          const oldHost = game.hostId;
+          game.setHostId(newHost);
+          // Broadcast host changed message
+          await broadcast.publish(Msg.System.HostChanged, { newHostId: newHost });
+          if (DEBUG) console.debug('[host] Host changed from', oldHost, 'to:', newHost);
+          // Handle game state transition if necessary
+          handleHostChange(oldHost, newHost!);
+        }
+      }
+    });
+
+    // Helper function to handle host change transitions
+    function handleHostChange(oldHost: string, newHost: string) {
+      // Log host changes for transparency
+      if (game.phase !== 'setup' && oldHost && newHost !== oldHost) {
+        game.appendLog(`Host changed from ${oldHost} to ${newHost}.`);
+      }
+      // Game state continues automatically as all logic checks game.hostId dynamically
+    }
 
     const amHost = () => game.hostId === PLAYER;
     if (DEBUG) {
@@ -77,6 +108,17 @@ void (async function bootstrapPhase2() {
       console.table(members);
       console.debug('[host] elected =', elected, 'amHost =', amHost());
     }
+
+    // Subscribe to HostChanged messages to update local state
+    broadcast.subscribe(Msg.System.HostChanged, (env) => {
+      const { newHostId } = env.payload as { newHostId: string };
+      if (newHostId && newHostId !== game.hostId) {
+        const oldHost = game.hostId;
+        game.setHostId(newHostId);
+        if (DEBUG) console.debug('[host] Received HostChanged from', oldHost, 'to:', newHostId);
+        handleHostChange(oldHost, newHostId!);
+      }
+    });
 
     if (amHost()) {
       // Host: route action.* to store mutations with simple dedupe
@@ -249,4 +291,3 @@ function exposeDebugHelpers(isConnected: boolean) {
 // (removed) dev-only demo subscribe
 
 // (removed) dev-only demo publish
-
