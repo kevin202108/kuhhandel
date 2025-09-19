@@ -287,6 +287,7 @@ void (async function bootstrapPhase2() {
         console.log('[DEBUG] Client receiving state update:', {
           stateVersion: incoming,
           auction: env.payload.state?.auction,
+          cow: env.payload.state?.cow,  // 添加 cow 調試信息
           phase: env.payload.state?.phase
         });
 
@@ -297,6 +298,18 @@ void (async function bootstrapPhase2() {
           auction.auction = env.payload.state.auction;
           auction.syncGameAuction();
           console.log('[DEBUG] Auction state synchronized:', auction.auction);
+        }
+
+        // 同步 cow store 狀態
+        if (env.payload.state?.cow) {
+          cow.initiatorId = env.payload.state.cow.initiatorId;
+          cow.targetPlayerId = env.payload.state.cow.targetPlayerId;
+          cow.targetAnimal = env.payload.state.cow.targetAnimal;
+          console.log('[DEBUG] Cow state synchronized:', {
+            initiatorId: cow.initiatorId,
+            targetPlayerId: cow.targetPlayerId,
+            targetAnimal: cow.targetAnimal
+          });
         }
 
         gotSnapshot = true;
