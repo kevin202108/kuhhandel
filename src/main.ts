@@ -182,6 +182,42 @@ void (async function bootstrapPhase2() {
         if (env.senderId !== auctioneer) return;
         auction.hostAward();
       });
+
+      // HostBuyback (host-only, auctioneer only)
+      const offBuyback = broadcast.subscribe(Msg.Action.HostBuyback, (env) => {
+        if (!accept(env.type, env.senderId, env.actionId, env.ts)) return;
+        if (game.phase !== 'auction.closing' || !game.auction) return;
+        const auctioneer = game.auction?.auctioneerId;
+        if (env.senderId !== auctioneer) return;
+
+        console.log('[DEBUG] Host processing HostBuyback');
+        auction.hostBuyback();
+      });
+
+      // ConfirmBuyback (host-only, auctioneer only)
+      const offConfirmBuyback = broadcast.subscribe(Msg.Action.ConfirmBuyback, (env) => {
+        if (!accept(env.type, env.senderId, env.actionId, env.ts)) return;
+        if (game.phase !== 'auction.buyback' || !game.auction) return;
+        const auctioneer = game.auction?.auctioneerId;
+        if (env.senderId !== auctioneer) return;
+
+        const { moneyCardIds } = env.payload as { moneyCardIds: string[] };
+        console.log('[DEBUG] Host processing ConfirmBuyback', { moneyCardIds });
+        auction.confirmBuyback(moneyCardIds);
+      });
+
+      // CancelBuyback (host-only, auctioneer only)
+      const offCancelBuyback = broadcast.subscribe(Msg.Action.CancelBuyback, (env) => {
+        if (!accept(env.type, env.senderId, env.actionId, env.ts)) return;
+        if (game.phase !== 'auction.buyback' || !game.auction) return;
+        const auctioneer = game.auction?.auctioneerId;
+        if (env.senderId !== auctioneer) return;
+
+        console.log('[DEBUG] Host processing CancelBuyback');
+        game.phase = 'auction.closing';
+        game.appendLog('Auctioneer cancelled buyback.');
+        auction.syncGameAuction();
+      });
       // Host: broadcast full snapshot on any mutation
       game.$subscribe((_mutation, state) => {
         const plain = JSON.parse(JSON.stringify(state));
