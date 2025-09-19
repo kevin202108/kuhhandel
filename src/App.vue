@@ -168,48 +168,15 @@
       </div>
     </section>
 
-    <!-- Cow Trade: Select Target -->
-    <section v-else-if="phase === 'cow.selectTarget'" class="view cow-trade">
-      <h2>🐄 牛交易：選擇對象</h2>
-      <CowTargetPicker
-        @target-selected="onCowTargetSelected"
-        @cancel="onCowCancelled"
-      />
-    </section>
-
-    <!-- Cow Trade: Select Animal -->
-    <section v-else-if="phase === 'cow.selectAnimal'" class="view cow-trade">
-      <h2>🐄 牛交易：選擇動物</h2>
-      <CowAnimalPicker
-        @animal-selected="onCowAnimalSelected"
-        @cancel="onCowCancelled"
-      />
-    </section>
-
-    <!-- Cow Trade: Commit Secret Bids -->
-    <section v-else-if="phase === 'cow.commit'" class="view cow-trade">
-      <h2>🐄 牛交易：秘密出價</h2>
-      <CowConfirmBar
-        @confirm="onCowConfirm"
-        @cancel="onCowCancelled"
-      />
-    </section>
-
-    <!-- Cow Trade: Reveal and Settle -->
-    <section v-else-if="phase === 'cow.reveal'" class="view cow-trade">
-      <h2>🐄 牛交易：結果揭曉</h2>
-      <div class="panel">
-        <div class="muted">正在處理交易結果...</div>
-      </div>
-    </section>
-
-    <!-- Cow Trade: Settlement -->
-    <section v-else-if="phase === 'cow.settlement'" class="view cow-trade">
-      <h2>🐄 牛交易：結算</h2>
-      <div class="panel">
-        <div class="muted">交易已完成</div>
-      </div>
-    </section>
+    <!-- 牛交易階段 -->
+    <CowTrade
+      v-else-if="isCowTradePhase"
+      :phase="phase"
+      @target-selected="onCowTargetSelected"
+      @animal-selected="onCowAnimalSelected"
+      @confirm="onCowConfirm"
+      @cancel="onCowCancelled"
+    />
     <!-- Turn End -->
     
 
@@ -248,9 +215,7 @@ import TurnChoice from '@/components/TurnChoice.vue';
 import AuctionBidderView from '@/components/Auction/AuctionBidderView.vue';
 import AuctionHostView from '@/components/Auction/AuctionHostView.vue';
 import MoneyPad from '@/components/MoneyPad.vue';
-import CowTargetPicker from '@/components/CowTrade/CowTargetPicker.vue';
-import CowAnimalPicker from '@/components/CowTrade/CowAnimalPicker.vue';
-import CowConfirmBar from '@/components/CowTrade/CowConfirmBar.vue';
+import CowTrade from '@/components/CowTrade/CowTrade.vue';
 
 import { useGameStore } from '@/store/game';
 import { useAuctionStore } from '@/store/auction';
@@ -341,6 +306,9 @@ const isFirstRound = computed(() => {
 });
 const auctioneerId = computed(() => auction.auction?.auctioneerId ?? game.turnOwnerId);
 const canBuyback = computed(() => auction.canAuctioneerBuyback);
+
+// 階段分組判斷
+const isCowTradePhase = computed(() => phase.value.startsWith('cow.'));
 const nextPlayerName = computed(() => {
   const nowIdx = players.value.findIndex(p => p.id === game.turnOwnerId);
   const next = players.value[(nowIdx + 1) % players.value.length];
