@@ -153,24 +153,60 @@ export const useCowStore = defineStore('cow', {
 
     // 發起者提交錢卡選擇
     commitInitiator(moneyCardIds: string[]) {
+      const game = useGameStore();
       this.initiatorSecret = moneyCardIds;
       this.syncGameCow();
-      this.checkBothCommitted();
+      game.phase = 'cow.choose';
     },
 
-    // 目標者提交錢卡選擇
-    commitTarget(moneyCardIds: string[]) {
+    // 目標玩家接受出價
+    acceptOffer() {
+      const game = useGameStore();
+      // 發起者贏得交易，目標不付錢
+      game.phase = 'cow.reveal';
+      this.revealAcceptedAndSettle();
+    },
+
+    // 目標玩家選擇提出回價
+    counterOffer() {
+      const game = useGameStore();
+      game.phase = 'cow.selectMoney';
+      this.syncGameCow();
+    },
+
+    // 目標者提交回價選擇
+    commitCounter(moneyCardIds: string[]) {
+      const game = useGameStore();
       this.targetSecret = moneyCardIds;
       this.syncGameCow();
-      this.checkBothCommitted();
+      game.phase = 'cow.reveal';
+      this.revealAndSettle();
     },
 
-    // 檢查雙方是否都已提交
-    checkBothCommitted() {
+    // 目標玩家接受出價：發起者直接贏得交易，不交換錢卡
+    revealAcceptedAndSettle() {
       const game = useGameStore();
-      if (this.initiatorSecret && this.targetSecret) {
-        game.phase = 'cow.reveal';
-        this.revealAndSettle();
+      if (!this.initiatorId || !this.targetPlayerId || !this.targetAnimal || !this.initiatorSecret) return;
+
+      const initiator = getPlayerById(game.$state, this.initiatorId);
+      const target = getPlayerById(game.$state, this.targetPlayerId);
+
+      const tradeAmount = this.tradeAmount;
+
+      // 發起者贏得動物，目標玩家不需要支付錢卡
+      this.executeAcceptedTrade(initiator, target, tradeAmount);
+      game.lastAwarded = { playerId: initiator.id, animal: this.targetAnimal };
+      game.appendLog(`${initiator.name} 贏得交易（目標玩家接受），獲得 ${tradeAmount} 隻 ${this.targetAnimal}`);
+
+      game.phase = 'turn.end';
+      this.reset();
+      this.syncGameCow();
+
+      // 檢查遊戲結束
+      game.checkEndAndMaybeFinish();
+      if (game.phase === 'turn.end') {
+        game.rotateTurn();
+        game.startTurn();
       }
     },
 
@@ -244,6 +280,15 @@ export const useCowStore = defineStore('cow', {
 
       winner.moneyCards.push(...loserCardObjects);
       loser.moneyCards.push(...winnerCardObjects);
+    },
+
+    // 執行接受出價的交易：只有動物交換，沒有錢卡交換
+    executeAcceptedTrade(winner: Player, loser: Player, amount: number) {
+      const game = useGameStore();
+
+      // 交換動物
+      winner.animals[this.targetAnimal!] = (winner.animals[this.targetAnimal!] || 0) + amount;
+      loser.animals[this.targetAnimal!] = (loser.animals[this.targetAnimal!] || 0) - amount;
     },
 
     // 取消牛交易

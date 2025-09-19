@@ -34,6 +34,25 @@ export function useCowTrade() {
     }, { actionId: newId() })
   }
 
+  function acceptOffer() {
+    void broadcast.publish(Msg.Action.AcceptCowOffer, {
+      playerId: myId
+    }, { actionId: newId() })
+  }
+
+  function counterOffer() {
+    void broadcast.publish(Msg.Action.CounterCowOffer, {
+      playerId: myId
+    }, { actionId: newId() })
+  }
+
+  function commitCounter(moneyCardIds: string[]) {
+    void broadcast.publish(Msg.Action.CommitCowCounter, {
+      playerId: myId,
+      moneyCardIds
+    }, { actionId: newId() })
+  }
+
   function cancelTrade() {
     void broadcast.publish(Msg.Action.CancelBuyback, {  // 使用現有的取消訊息
       playerId: myId
@@ -44,6 +63,9 @@ export function useCowTrade() {
     selectTarget,
     selectAnimal,
     commitTrade,
+    acceptOffer,
+    counterOffer,
+    commitCounter,
     cancelTrade,
     myId
   }

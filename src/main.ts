@@ -301,12 +301,33 @@ void (async function bootstrapPhase2() {
         if (playerId === cow.initiatorId) {
           console.log('[DEBUG] Host processing CommitCowTrade for initiator', { playerId, moneyCardIds });
           cow.commitInitiator(moneyCardIds);
-        } else if (playerId === cow.targetPlayerId) {
-          console.log('[DEBUG] Host processing CommitCowTrade for target', { playerId, moneyCardIds });
-          cow.commitTarget(moneyCardIds);
         } else {
-          console.log('[DEBUG] Host ignoring CommitCowTrade for non-participant', playerId);
+          console.log('[DEBUG] Host ignoring CommitCowTrade for non-initiator', playerId);
         }
+      });
+
+      const offAcceptCowOffer = broadcast.subscribe(Msg.Action.AcceptCowOffer, (env) => {
+        if (!accept(env.type, env.senderId, env.actionId, env.ts)) return;
+        const { playerId } = env.payload as { playerId: string };
+        if (game.phase !== 'cow.choose' || env.senderId !== playerId || playerId !== cow.targetPlayerId) return;
+        console.log('[DEBUG] Host processing AcceptCowOffer', { playerId });
+        cow.acceptOffer();
+      });
+
+      const offCounterCowOffer = broadcast.subscribe(Msg.Action.CounterCowOffer, (env) => {
+        if (!accept(env.type, env.senderId, env.actionId, env.ts)) return;
+        const { playerId } = env.payload as { playerId: string };
+        if (game.phase !== 'cow.choose' || env.senderId !== playerId || playerId !== cow.targetPlayerId) return;
+        console.log('[DEBUG] Host processing CounterCowOffer', { playerId });
+        cow.counterOffer();
+      });
+
+      const offCommitCowCounter = broadcast.subscribe(Msg.Action.CommitCowCounter, (env) => {
+        if (!accept(env.type, env.senderId, env.actionId, env.ts)) return;
+        const { playerId, moneyCardIds } = env.payload as { playerId: string; moneyCardIds: string[] };
+        if (game.phase !== 'cow.selectMoney' || env.senderId !== playerId || playerId !== cow.targetPlayerId) return;
+        console.log('[DEBUG] Host processing CommitCowCounter', { playerId, moneyCardIds });
+        cow.commitCounter(moneyCardIds);
       });
       // Host: broadcast full snapshot on any mutation
       game.$subscribe((_mutation, state) => {

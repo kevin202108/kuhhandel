@@ -175,6 +175,9 @@
       @target-selected="onCowTargetSelected"
       @animal-selected="onCowAnimalSelected"
       @confirm="onCowConfirm"
+      @accept-offer="onCowAcceptOffer"
+      @counter-offer="onCowCounterOffer"
+      @counter-confirm="onCowCounterConfirm"
       @cancel="onCowCancelled"
     />
     <!-- Turn End -->
@@ -511,6 +514,51 @@ function onCowConfirm(moneyCardIds: string[]) {
   }
 
   console.log('[DEBUG] onCowConfirm broadcast published');
+}
+
+function onCowAcceptOffer() {
+  console.log('[DEBUG] onCowAcceptOffer called', {
+    currentPhase: game.phase,
+    myId
+  });
+
+  const myId_local = myId;
+  void broadcast.publish(Msg.Action.AcceptCowOffer, {
+    playerId: myId_local
+  }, { actionId: newId() });
+
+  console.log('[DEBUG] onCowAcceptOffer broadcast published');
+}
+
+function onCowCounterOffer() {
+  console.log('[DEBUG] onCowCounterOffer called', {
+    currentPhase: game.phase,
+    myId
+  });
+
+  const myId_local = myId;
+  void broadcast.publish(Msg.Action.CounterCowOffer, {
+    playerId: myId_local
+  }, { actionId: newId() });
+
+  console.log('[DEBUG] onCowCounterOffer broadcast published');
+}
+
+function onCowCounterConfirm(moneyCardIds: string[]) {
+  console.log('[DEBUG] onCowCounterConfirm called', {
+    moneyCardIds,
+    currentPhase: game.phase,
+    myId
+  });
+
+  const myId_local = myId;
+  const moneyCardIds_local = moneyCardIds;
+  void broadcast.publish(Msg.Action.CommitCowCounter, {
+    playerId: myId_local,
+    moneyCardIds: moneyCardIds_local
+  }, { actionId: newId() });
+
+  console.log('[DEBUG] onCowCounterConfirm broadcast published');
 }
 
 function onCowCancelled() {

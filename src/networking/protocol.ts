@@ -17,6 +17,9 @@ export const Msg = {
     SelectCowTarget: 'action.selectCowTarget',
     SelectCowAnimal: 'action.selectCowAnimal',
     CommitCowTrade: 'action.commitCowTrade',
+    AcceptCowOffer: 'action.acceptCowOffer',
+    CounterCowOffer: 'action.counterCowOffer',
+    CommitCowCounter: 'action.commitCowCounter',
     HostAward: 'action.hostAward',
     HostBuyback: 'action.hostBuyback',
     ConfirmBuyback: 'action.confirmBuyback',
@@ -51,6 +54,9 @@ export interface PayloadByType {
   [Msg.Action.SelectCowAnimal]: { playerId: string; animal: Animal };
   // Host-only（只給 Host，看 README 說明；Phase 4 才用）
   [Msg.Action.CommitCowTrade]: { playerId: string; moneyCardIds: string[] };
+  [Msg.Action.AcceptCowOffer]: { playerId: string };
+  [Msg.Action.CounterCowOffer]: { playerId: string };
+  [Msg.Action.CommitCowCounter]: { playerId: string; moneyCardIds: string[] };
   [Msg.Action.HostAward]: { playerId: string };
   [Msg.Action.HostBuyback]: { playerId: string };
   [Msg.Action.ConfirmBuyback]: { playerId: string; moneyCardIds: string[] };
