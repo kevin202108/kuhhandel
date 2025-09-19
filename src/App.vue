@@ -169,20 +169,37 @@
     </section>
     <!-- Cow Trade: Select Target -->
     <section v-else-if="phase === 'cow.selectTarget'" class="view cow-trade">
-      <CowTargetPicker
-        :players="players"
-        :myId="myId"
-        @select-target="onSelectCowTarget"
-      />
+      <div v-if="myId === game.cow?.initiatorId" class="panel">
+        <CowTargetPicker
+          :players="players"
+          :myId="myId"
+          @select-target="onSelectCowTarget"
+        />
+      </div>
+      <div v-else class="panel">
+        <h2>正在等待牛交易發起者...</h2>
+        <p class="description">其他玩家正在選擇交易目標</p>
+      </div>
     </section>
 
     <!-- Cow Trade: Select Animal -->
     <section v-else-if="phase === 'cow.selectAnimal'" class="view cow-trade">
-      <CowAnimalPicker
-        :myAnimals="activePlayer?.animals || emptyAnimals"
-        :targetPlayer="players.find(p => p.id === game.cow?.targetPlayerId)"
-        @select-animal="onSelectCowAnimal"
-      />
+      <div v-if="myId === game.cow?.initiatorId" class="panel">
+        <CowAnimalPicker
+          :myAnimals="activePlayer?.animals || emptyAnimals"
+          :targetPlayer="players.find(p => p.id === game.cow?.targetPlayerId)"
+          @select-animal="onSelectCowAnimal"
+        />
+      </div>
+      <div v-else-if="myId === game.cow?.targetPlayerId" class="panel">
+        <h2>你被選為交易目標</h2>
+        <p class="description">{{ nameOf(game.cow?.initiatorId || '') }} 正在選擇要交易的動物</p>
+        <p class="hint">請稍候，交易即將開始</p>
+      </div>
+      <div v-else class="panel">
+        <h2>正在等待牛交易發起者...</h2>
+        <p class="description">其他玩家正在選擇交易動物</p>
+      </div>
     </section>
 
     <!-- Cow Trade: Commit -->
