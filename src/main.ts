@@ -94,7 +94,7 @@ void (async function bootstrapPhase2() {
     });
 
     // Helper function to handle host change transitions
-    function handleHostChange(oldHost: string, newHost: string) {
+    function handleHostChange(oldHost: string | undefined, newHost: string) {
       // Log host changes for transparency
       if (game.phase !== 'setup' && oldHost && newHost !== oldHost) {
         game.appendLog(`Host changed from ${oldHost} to ${newHost}.`);
