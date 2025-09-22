@@ -15,8 +15,7 @@
 
     <!-- Setup Screen (NameEntry / Lobby) -->
     <section v-if="phase === 'setup'" class="view setup">
-      <h1>Multiplayer Auction + Cow Trade</h1>
-      <p class="sub">Phase 2: Ably Multiplayer MVP</p>
+      <h1>幕後交易 KUHHANDEL</h1>
 
       <!-- NameEntry when no ?player= given -->
       <div v-if="!myId" class="panel">
@@ -82,6 +81,10 @@
           <div class="animal-display">
             <span class="label">拍賣動物：</span>
             <strong class="animal-name">{{ game.auction?.card?.animal }}</strong>
+          </div>
+          <div class="animal-score">
+            <span class="label">分數：</span>
+            <strong class="animal-points">{{ animalScore }}</strong>
           </div>
           <div class="highest-bid">
             <span class="label">目前最高：</span>
@@ -224,6 +227,7 @@ import { useGameStore } from '@/store/game';
 import { useAuctionStore } from '@/store/auction';
 import { useCowStore } from '@/store/cow';
 import broadcast from '@/services/broadcast';
+import rules from '@/services/rules';
 import { Msg } from '@/networking/protocol';
 import type { Phase, Player } from '@/types/game';
 import { newId } from '@/utils/id';
@@ -309,6 +313,13 @@ const isFirstRound = computed(() => {
 });
 const auctioneerId = computed(() => auction.auction?.auctioneerId ?? game.turnOwnerId);
 const canBuyback = computed(() => auction.canAuctioneerBuyback);
+
+// 拍賣動物的分數
+const animalScore = computed(() => {
+  const animal = game.auction?.card?.animal;
+  if (!animal) return 0;
+  return rules.ANIMAL_SCORES[animal];
+});
 
 // 階段分組判斷
 const isCowTradePhase = computed(() => phase.value.startsWith('cow.'));
@@ -710,6 +721,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 }
 
 .animal-display,
+.animal-score,
 .highest-bid {
   display: flex;
   align-items: center;
@@ -725,6 +737,12 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .animal-name,
 .highest-amount {
   color: #ffffff;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.animal-points {
+  color: #fbbf24; /* 金黃色，代表分數 */
   font-size: 18px;
   font-weight: 800;
 }
