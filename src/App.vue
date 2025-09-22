@@ -80,7 +80,7 @@
         <div class="auction-details">
           <div class="animal-display">
             <span class="label">拍賣動物：</span>
-            <strong class="animal-name">{{ animalDisplay }}</strong>
+            <strong class="animal-name">{{ auctionAnimalName }} <span class="animal-points">{{ auctionAnimalScore }}</span></strong>
           </div>
           <div class="highest-bid">
             <span class="label">目前最高：</span>
@@ -311,12 +311,14 @@ const auctioneerId = computed(() => auction.auction?.auctioneerId ?? game.turnOw
 const canBuyback = computed(() => auction.canAuctioneerBuyback);
 
 // 拍賣動物的顯示內容
-const animalDisplay = computed(() => {
+const auctionAnimalName = computed(() => {
   const animal = game.auction?.card?.animal;
-  if (!animal) return 'N/A';
-  const name = rules.ANIMAL_NAMES[animal];
-  const score = rules.ANIMAL_SCORES[animal];
-  return `${name}${score}`;
+  return animal ? rules.ANIMAL_NAMES[animal] : '';
+});
+
+const auctionAnimalScore = computed(() => {
+  const animal = game.auction?.card?.animal;
+  return animal ? rules.ANIMAL_SCORES[animal] : 0;
 });
 
 // 階段分組判斷
