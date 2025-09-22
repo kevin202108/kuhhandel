@@ -71,4 +71,5 @@ export interface Rules {
   START_MONEY: Record<MoneyDenom, number>; // {0:2, 10:4, 50:1}
   DONKEY_PAYOUTS: [50, 100, 200, 500];
   ANIMAL_SCORES: Record<Animal, number>;
+  ANIMAL_NAMES: Record<Animal, string>;
 }

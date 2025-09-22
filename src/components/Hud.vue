@@ -66,18 +66,7 @@ function moneyTotal(p: Player) {
 }
 
 function short(a: Animal): string {
-  switch (a) {
-    case 'chicken': return '雞';
-    case 'goose': return '鵝';
-    case 'cat': return '貓';
-    case 'dog': return '狗';
-    case 'sheep': return '羊';
-    case 'snake': return '蛇';
-    case 'donkey': return '驢';
-    case 'pig': return '豬';
-    case 'cow': return '牛';
-    case 'horse': return '馬';
-  }
+  return rules.ANIMAL_NAMES[a];
 }
 
 function animalScore(a: Animal): number {

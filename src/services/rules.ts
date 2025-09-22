@@ -19,6 +19,19 @@ export const START_MONEY: Record<MoneyDenom, number> = {
 
 export const DONKEY_PAYOUTS: [50, 100, 200, 500] = [50, 100, 200, 500];
 
+export const ANIMAL_NAMES: Record<Animal, string> = {
+  chicken: '雞',
+  goose: '鵝',
+  cat: '貓',
+  dog: '狗',
+  sheep: '羊',
+  snake: '蛇',
+  donkey: '驢',
+  pig: '豬',
+  cow: '牛',
+  horse: '馬',
+};
+
 export const ANIMAL_SCORES: Record<Animal, number> = {
   chicken: 10,
   goose: 40,
@@ -39,6 +52,7 @@ export const rules: Rules = Object.freeze({
   START_MONEY,
   DONKEY_PAYOUTS,
   ANIMAL_SCORES,
+  ANIMAL_NAMES,
 } as const);
 
 export default rules;
