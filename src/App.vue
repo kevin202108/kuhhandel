@@ -83,7 +83,7 @@
             <strong class="animal-name">{{ game.auction?.card?.animal }}</strong>
           </div>
           <div class="animal-score">
-            <span class="label">分數：</span>
+            <span class="label">動物分數：</span>
             <strong class="animal-points">{{ animalScore }}</strong>
           </div>
           <div class="highest-bid">

@@ -26,7 +26,7 @@
             <div class="animals">
               <template v-for="a in animalOrder" :key="a">
                 <span v-if="p.animals[a] > 0" class="animal" :class="{ 'newly-awarded': isNewlyAwarded(p, a) }">
-                  {{ short(a) }}: <strong>{{ p.animals[a] }}</strong>
+                  {{ short(a) }}<span class="animal-points">{{ animalScore(a) }}</span>: <strong>{{ p.animals[a] }}</strong>
                 </span>
               </template>
             </div>
@@ -47,6 +47,7 @@
 
 <script setup lang="ts">
 import type { Player, Phase, Animal } from '@/types/game';
+import rules from '@/services/rules';
 
 const props = defineProps<{
   players: Player[];
@@ -77,6 +78,10 @@ function short(a: Animal): string {
     case 'cow': return '牛';
     case 'horse': return '馬';
   }
+}
+
+function animalScore(a: Animal): number {
+  return rules.ANIMAL_SCORES[a];
 }
 
 function isNewlyAwarded(p: Player, a: Animal): boolean {
@@ -133,4 +138,7 @@ function isNewlyAwarded(p: Player, a: Animal): boolean {
 .dot.on { background: #10b981; }
 .loglist { margin: 0; padding-left: 18px; color: #f9fafb; }
 .muted { color: #9ca3af; font-style: italic; }
+.animal-points {
+  color: #fbbf24; /* 金黃色，代表分數 */
+}
 </style>
