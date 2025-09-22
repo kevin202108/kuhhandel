@@ -13,12 +13,17 @@
     </header>
     <div v-if="hostChangedMsg" class="banner">{{ hostChangedMsg }}</div>
 
-    <!-- Setup Screen (NameEntry / Lobby) -->
+    <!-- Setup Screen -->
     <section v-if="phase === 'setup'" class="view setup">
       <h1>幕後交易 KUHHANDEL</h1>
 
+      <!-- Setup: Configure API key and name -->
+      <SetupForm
+        v-if="!hasConfiguredApiKey"
+        @configured="hasConfiguredApiKey = true" />
+
       <!-- NameEntry when no ?player= given -->
-      <div v-if="!myId" class="panel">
+      <div v-else-if="!myId" class="panel">
         <h2>Enter Your Name</h2>
         <div class="players-setup">
           <div class="player-row">
@@ -30,22 +35,15 @@
       </div>
 
       <!-- Lobby when already joined -->
-      <div v-else class="panel">
-        <h2>Lobby (room: {{ roomId }})</h2>
-        <p class="hint">Host: <code>{{ hostIdLabel }}</code></p>
-        <ul class="plist">
-          <li v-for="m in members" :key="m.id">
-            <strong>{{ m.data?.name || m.id }}</strong> <code>({{ m.id }})</code>
-            <span v-if="m.id === hostIdLabel" class="badge">Host</span>
-            <span v-if="m.id === myId" class="badge">You</span>
-          </li>
-        </ul>
-        <div class="setup-actions">
-          <button class="secondary" @click="refreshPresence">Refresh</button>
-          <button class="primary" :disabled="!canStartOnline" @click="startGame">Start Game (Host)</button>
-        </div>
-        <p class="hint">Requires at least 2 members; only Host can start.</p>
-      </div>
+      <LobbyForm
+        v-else
+        :room-id="roomId"
+        :my-id="myId"
+        :members="members"
+        :host-id-label="hostIdLabel"
+        :can-start-online="canStartOnline"
+        @refresh-presence="refreshPresence"
+        @start-game="startGame" />
     </section>
 
     <!-- Turn Choice -->
@@ -213,6 +211,8 @@
 <script setup lang="ts">
 import { computed, reactive, ref, onMounted, onUnmounted, watch } from 'vue';
 import Hud from '@/components/Hud.vue';
+import SetupForm from '@/components/SetupForm.vue';
+import LobbyForm from '@/components/LobbyForm.vue';
 import TurnChoice from '@/components/TurnChoice.vue';
 import AuctionBidderView from '@/components/Auction/AuctionBidderView.vue';
 import AuctionHostView from '@/components/Auction/AuctionHostView.vue';
@@ -241,6 +241,9 @@ async function refreshPresence() {
   try { members.value = await broadcast.presence().getMembers(); } catch { /* ignore */ }
 }
 const hostIdLabel = computed(() => game.hostId || members.value.map(m => m.id).sort()[0] || '');
+
+// API Key configuration status
+const hasConfiguredApiKey = ref(localStorage.getItem('player-configured') === 'true');
 
 // NameEntry data
 const nameInput = ref('');

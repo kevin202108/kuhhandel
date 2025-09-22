@@ -1,41 +1,98 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, defineEmits } from 'vue';
 
-defineProps<{ msg: string }>()
+// Emits
+const emit = defineEmits<{
+  configured: []
+}>();
 
-const count = ref(0)
+// State
+const apiKeyInput = ref('');
+const nameInput = ref('');
+const ID_RE = /^[a-z0-9_-]{1,24}$/;
+
+// Computed
+const canConfigure = computed(() => {
+  const apiKeyValid = apiKeyInput.value.trim().length > 10; // Basic API key length check
+  const nameValid = ID_RE.test(nameInput.value.trim().toLowerCase());
+  return apiKeyValid && nameValid;
+});
+
+// Methods
+function configureAndJoin() {
+  if (!canConfigure.value) return;
+
+  // Save to localStorage
+  localStorage.setItem('ably-api-key', apiKeyInput.value.trim());
+  localStorage.setItem('player-configured', 'true');
+
+  // Reset form
+  apiKeyInput.value = '';
+  nameInput.value = '';
+
+  // Emit configured event
+  emit('configured');
+}
 </script>
 
 <template>
-  <h1>{{ msg }}</h1>
-
-  <div class="card">
-    <button type="button" @click="count++">count is {{ count }}</button>
-    <p>
-      Edit
-      <code>components/HelloWorld.vue</code> to test HMR
-    </p>
+  <div class="panel">
+    <h2>Setup Your Game</h2>
+    <div class="players-setup">
+      <div class="input-row">
+        <label>Ably API Key:</label>
+        <input
+          v-model.trim="apiKeyInput"
+          placeholder="Your Ably API key (from ably.io)..."
+          type="password" />
+      </div>
+      <div class="input-row">
+        <label>Your Name:</label>
+        <input
+          v-model.trim="nameInput"
+          placeholder="your-name (a-z0-9_-)"
+          maxlength="16" />
+      </div>
+      <div class="actions">
+        <button
+          class="primary"
+          :disabled="!canConfigure"
+          @click="configureAndJoin">
+          Continue to Lobby
+        </button>
+      </div>
+      <p class="hint">Enter your Ably API key and choose a player name to join the gaming room.</p>
+    </div>
   </div>
-
-  <p>
-    Check out
-    <a href="https://vuejs.org/guide/quick-start.html#local" target="_blank"
-      >create-vue</a
-    >, the official Vue + Vite starter
-  </p>
-  <p>
-    Learn more about IDE Support for Vue in the
-    <a
-      href="https://vuejs.org/guide/scaling-up/tooling.html#ide-support"
-      target="_blank"
-      >Vue Docs Scaling up Guide</a
-    >.
-  </p>
-  <p class="read-the-docs">Click on the Vite and Vue logos to learn more</p>
 </template>
 
 <style scoped>
-.read-the-docs {
-  color: #888;
+.input-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 12px 0;
+}
+
+.input-row label {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.input-row input {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-secondary);
+  background: var(--bg-accent);
+  color: var(--text-primary);
+}
+
+.input-row input[type="password"] {
+  font-family: monospace;
+}
+
+.actions {
+  margin-top: 16px;
 }
 </style>

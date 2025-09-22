@@ -9,8 +9,8 @@ import type { Envelope, MsgType } from '@/networking/protocol';
 let client: Ably.Types.RealtimePromise | null = null;
 
 function requireApiKey(): string {
-  const key = import.meta.env.VITE_ABLY_API_KEY as string | undefined;
-  if (!key) throw new Error('[Ably] Missing VITE_ABLY_API_KEY');
+  const key = localStorage.getItem('ably-api-key') as string | undefined;
+  if (!key) throw new Error('[Ably] No Ably API key found. Please configure your gaming setup first.');
   return key;
 }
 
