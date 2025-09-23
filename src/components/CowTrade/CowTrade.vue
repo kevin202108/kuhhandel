@@ -228,8 +228,8 @@ const emit = defineEmits<{
 }>()
 
 // 從 URL 獲取當前玩家 ID
-const url = new URL(location.href)
-const myId = url.searchParams.get('player')?.toLowerCase().trim() || ''
+import { useIdentityStore } from '@/store/identity'
+const myId = useIdentityStore().playerId
 
 const game = useGameStore()
 const cow = useCowStore()

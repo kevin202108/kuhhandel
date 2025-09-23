@@ -97,6 +97,7 @@ import { useAuctionStore } from '@/store/auction'
 import AuctionBidderView from '@/components/Auction/AuctionBidderView.vue'
 import AuctionHostView from '@/components/Auction/AuctionHostView.vue'
 import MoneyPad from '@/components/MoneyPad.vue'
+import { useIdentityStore } from '@/store/identity'
 
 const props = defineProps<{
   phase: string
@@ -115,9 +116,8 @@ const emit = defineEmits<{
 const game = useGameStore()
 const auction = useAuctionStore()
 
-// 從 URL 獲取當前玩家 ID
-const url = new URL(location.href)
-const myId = url.searchParams.get('player')?.toLowerCase().trim() || ''
+// 從 Identity 取得當前玩家 ID
+const myId = useIdentityStore().playerId
 
 // 本地狀態
 const selectedMoneyIds = ref<string[]>([])

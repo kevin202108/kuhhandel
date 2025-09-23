@@ -4,14 +4,14 @@ import broadcast from '@/services/broadcast'
 import { Msg } from '@/networking/protocol'
 import { newId } from '@/utils/id'
 import type { Animal } from '@/types/game'
+import { useIdentityStore } from '@/store/identity'
 
 export function useCowTrade() {
   const game = useGameStore()
   const cow = useCowStore()
 
-  // 從 URL 獲取當前玩家 ID
-  const url = new URL(location.href)
-  const myId = url.searchParams.get('player')?.toLowerCase().trim() || ''
+  // 從 identity 取得當前玩家 ID
+  const myId = useIdentityStore().playerId
 
   function selectTarget(targetId: string) {
     void broadcast.publish(Msg.Action.SelectCowTarget, {

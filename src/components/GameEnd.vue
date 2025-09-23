@@ -42,6 +42,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Player } from '@/types/game'
+import { useIdentityStore } from '@/store/identity'
 
 interface ScoreItem {
   playerId: string
@@ -56,9 +57,8 @@ const emit = defineEmits<{
   'reset': []
 }>()
 
-// 從 URL 獲取當前玩家 ID
-const url = new URL(location.href)
-const currentPlayerId = url.searchParams.get('player')?.toLowerCase().trim() || ''
+// 從 Identity 取得當前玩家 ID
+const currentPlayerId = useIdentityStore().playerId
 
 function onRestart() {
   emit('reset')

@@ -17,16 +17,10 @@
     <section v-if="phase === 'setup'" class="view setup">
       <h1>幕後交易 KUHHANDEL</h1>
 
-      <!-- NameEntry when no ?player= given -->
-      <div v-if="!myId" class="panel">
-        <h2>Enter Your Name</h2>
-        <div class="players-setup">
-          <div class="player-row">
-            <input v-model.trim="nameInput" placeholder="your-name (a-z0-9_-)" maxlength="16" />
-            <button class="primary" :disabled="!canJoin" @click="joinRoom">Join</button>
-          </div>
-          <p class="hint">Adds ?player= to URL and reloads, then presence joins automatically.</p>
-        </div>
+      <!-- Setup form when not joined -->
+      <div v-if="!identity.joined" class="panel">
+        <h2>Join a Room</h2>
+        <SetupForm />
       </div>
 
       <!-- Lobby when already joined -->
@@ -218,6 +212,7 @@ import AuctionBidderView from '@/components/Auction/AuctionBidderView.vue';
 import AuctionHostView from '@/components/Auction/AuctionHostView.vue';
 import MoneyPad from '@/components/MoneyPad.vue';
 import CowTrade from '@/components/CowTrade/CowTrade.vue';
+import SetupForm from '@/components/SetupForm.vue';
 
 import { useGameStore } from '@/store/game';
 import { useAuctionStore } from '@/store/auction';
@@ -227,14 +222,15 @@ import rules from '@/services/rules';
 import { Msg } from '@/networking/protocol';
 import type { Phase, Player } from '@/types/game';
 import { newId } from '@/utils/id';
+import { useIdentityStore } from '@/store/identity';
 
 const game = useGameStore();
 const auction = useAuctionStore();
 
-// Presence helpers (Phase 2)
-const url = new URL(location.href);
-const myId = (url.searchParams.get('player') ?? '').toLowerCase().trim();
-const roomId = (url.searchParams.get('room') ?? 'dev').toLowerCase().trim();
+// Identity & presence helpers (Phase 2)
+const identity = useIdentityStore();
+const myId = computed(() => identity.playerId || '');
+const roomId = computed(() => identity.roomId || 'dev');
 type Member = { id: string; data?: { playerId: string; name: string } };
 const members = ref<Member[]>([]);
 async function refreshPresence() {
@@ -242,20 +238,10 @@ async function refreshPresence() {
 }
 const hostIdLabel = computed(() => game.hostId || members.value.map(m => m.id).sort()[0] || '');
 
-// NameEntry data
-const nameInput = ref('');
-const ID_RE = /^[a-z0-9_-]{1,24}$/;
-const canJoin = computed(() => ID_RE.test(nameInput.value.trim().toLowerCase()));
-function joinRoom() {
-  if (!canJoin.value) return;
-  const n = nameInput.value.trim().toLowerCase();
-  const next = new URL(location.href);
-  next.searchParams.set('player', n);
-  location.href = next.toString();
-}
+// (URL-join removed) handled by SetupForm
 
 // Start gating (Host only, >=2 members)
-const canStartOnline = computed(() => (hostIdLabel.value === myId) && members.value.length >= 2);
+const canStartOnline = computed(() => (hostIdLabel.value === myId.value) && members.value.length >= 2);
 
 // Host change banner
 const hostChangedMsg = ref<string | null>(null);
@@ -289,8 +275,8 @@ watch(() => game.auction?.highest, (newHighest, oldHighest) => {
  * Setup: Start game (host-only, uses presence)
  * -------------------------- */
 function startGame() {
-  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
-  void broadcast.publish(Msg.Action.StartGame, { playerId: myId });
+  const me = myId.value;
+  void broadcast.publish(Msg.Action.StartGame, { playerId: me });
 }
 
 /** --------------------------
@@ -356,18 +342,17 @@ function nameOf(id: string) {
  * Event handlers
  * -------------------------- */
 function onChooseAuction() {
-  // Route via Ably to host
-  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
-  void broadcast.publish(Msg.Action.ChooseAuction, { playerId: myId });
+  const me = myId.value;
+  void broadcast.publish(Msg.Action.ChooseAuction, { playerId: me });
 }
 
 function onChooseCowTrade() {
   console.log('[DEBUG] onChooseCowTrade called', {
     currentPhase: game.phase,
-    myId
+    myId: myId.value
   });
 
-  const myId_local = myId; // needed for closure
+  const myId_local = myId.value; // needed for closure
   void broadcast.publish(Msg.Action.ChooseCowTrade, {
     playerId: myId_local
   }, { actionId: newId() });
@@ -376,22 +361,22 @@ function onChooseCowTrade() {
 }
 
 function onPlaceBid(playerId: string, moneyCardIds: string[]) {
-  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
-  void broadcast.publish(Msg.Action.PlaceBid, { playerId: myId, moneyCardIds }, { actionId: newId() });
+  const me = myId.value;
+  void broadcast.publish(Msg.Action.PlaceBid, { playerId: me, moneyCardIds }, { actionId: newId() });
 }
 
 function onPassBid(playerId: string) {
-  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
-  void broadcast.publish(Msg.Action.PassBid, { playerId: myId });
+  const me = myId.value;
+  void broadcast.publish(Msg.Action.PassBid, { playerId: me });
 }
 
 function onHostAward() {
-  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
-  void broadcast.publish(Msg.Action.HostAward, { playerId: myId });
+  const me = myId.value;
+  void broadcast.publish(Msg.Action.HostAward, { playerId: me });
 }
 
 function onHostBuyback() {
-  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+  const myId = myId.value;
   console.log('[DEBUG] onHostBuyback: Initiating buyback', {
     playerId: myId,
     currentPhase: phase.value,
@@ -444,7 +429,7 @@ function onConfirmBuyback() {
     });
     return;
   }
-  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+  const myId = myId.value;
   console.log('[DEBUG] onConfirmBuyback: Confirming buyback', {
     playerId: myId,
     selectedCardIds: selectedMoneyIds.value,
@@ -460,7 +445,7 @@ function onConfirmBuyback() {
 }
 
 function onCancelBuyback() {
-  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+  const myId = myId.value;
   console.log('[DEBUG] onCancelBuyback: Cancelling buyback', {
     playerId: myId,
     previouslySelectedCards: selectedMoneyIds.value
@@ -476,7 +461,7 @@ function onCowTargetSelected(targetId: string) {
     currentPhase: game.phase
   });
 
-  const myId_local = myId; // needed for closure
+  const myId_local = myId.value; // needed for closure
   void broadcast.publish(Msg.Action.SelectCowTarget, {
     playerId: myId_local,
     targetId: targetId
@@ -491,7 +476,7 @@ function onCowAnimalSelected(animal: import('@/types/game').Animal) {
     currentPhase: game.phase
   });
 
-  const myId_local = myId; // needed for closure
+  const myId_local = myId.value; // needed for closure
   void broadcast.publish(Msg.Action.SelectCowAnimal, {
     playerId: myId_local,
     animal: animal
@@ -502,17 +487,17 @@ function onCowAnimalSelected(animal: import('@/types/game').Animal) {
 
 function onCowConfirm(moneyCardIds: string[]) {
   console.log('[DEBUG] onCowConfirm called', {
-    myId,
+    myId: myId.value,
     moneyCardIds,
-    isInitiator: useCowStore().initiatorId === myId,
+    isInitiator: useCowStore().initiatorId === myId.value,
     targetId: useCowStore().targetPlayerId,
     currentPhase: game.phase
   });
 
-  const myId_local = myId; // needed for closure
+  const myId_local = myId.value; // needed for closure
   const moneyCardIds_local = moneyCardIds; // needed for closure
 
-  if (useCowStore().initiatorId === myId) {
+  if (useCowStore().initiatorId === myId.value) {
     void broadcast.publish(Msg.Action.CommitCowTrade, {
       playerId: myId_local,
       moneyCardIds: moneyCardIds_local
@@ -530,10 +515,10 @@ function onCowConfirm(moneyCardIds: string[]) {
 function onCowAcceptOffer() {
   console.log('[DEBUG] onCowAcceptOffer called', {
     currentPhase: game.phase,
-    myId
+    myId: myId.value
   });
 
-  const myId_local = myId;
+  const myId_local = myId.value;
   void broadcast.publish(Msg.Action.AcceptCowOffer, {
     playerId: myId_local
   }, { actionId: newId() });
@@ -544,10 +529,10 @@ function onCowAcceptOffer() {
 function onCowCounterOffer() {
   console.log('[DEBUG] onCowCounterOffer called', {
     currentPhase: game.phase,
-    myId
+    myId: myId.value
   });
 
-  const myId_local = myId;
+  const myId_local = myId.value;
   void broadcast.publish(Msg.Action.CounterCowOffer, {
     playerId: myId_local
   }, { actionId: newId() });
@@ -559,10 +544,10 @@ function onCowCounterConfirm(moneyCardIds: string[]) {
   console.log('[DEBUG] onCowCounterConfirm called', {
     moneyCardIds,
     currentPhase: game.phase,
-    myId
+    myId: myId.value
   });
 
-  const myId_local = myId;
+  const myId_local = myId.value;
   const moneyCardIds_local = moneyCardIds;
   void broadcast.publish(Msg.Action.CommitCowCounter, {
     playerId: myId_local,
@@ -575,11 +560,11 @@ function onCowCounterConfirm(moneyCardIds: string[]) {
 function onCowCancelled() {
   console.log('[DEBUG] onCowCancelled: Sending cancel request', {
     currentPhase: game.phase,
-    myId
+    myId: myId.value
   });
 
   // Send CancelBuyback message to host for unified handling
-  const myId_local = myId; // needed for closure
+  const myId_local = myId.value; // needed for closure
   void broadcast.publish(Msg.Action.CancelBuyback, {
     playerId: myId_local
   }, { actionId: newId() });
