@@ -389,6 +389,14 @@ void (async function bootstrapPhase2() {
         console.log('[DEBUG] Host processing CommitCowCounter', { playerId, moneyCardIds });
         cow.commitCounter(moneyCardIds);
       });
+      
+      const offCancelCowCounter = broadcast.subscribe(Msg.Action.CancelCowCounter, (env) => {
+        if (!accept(env.type, env.senderId, env.actionId, env.ts)) return;
+        const { playerId } = env.payload as { playerId: string };
+        if (game.phase !== 'cow.selectMoney' || env.senderId !== playerId || playerId !== cow.targetPlayerId) return;
+        console.log('[DEBUG] Host processing CancelCowCounter', { playerId });
+        cow.cancelCounter();
+      });
       // Host: broadcast full snapshot on any mutation
       game.$subscribe((_mutation, state) => {
         const plain = JSON.parse(JSON.stringify(state));

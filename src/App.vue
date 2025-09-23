@@ -28,20 +28,20 @@
 
       <!-- Lobby when already joined -->
       <div v-else class="panel">
-        <h2>Lobby (room: {{ roomId }})</h2>
-        <p class="hint">Host: <code>{{ hostIdLabel }}</code></p>
+        <h2>大廳 (房間: {{ roomId }})</h2>
+        <p class="hint">房主: <code>{{ hostIdLabel }}</code></p>
         <ul class="plist">
           <li v-for="m in members" :key="m.id">
             <strong>{{ m.data?.name || m.id }}</strong> <code>({{ m.id }})</code>
-            <span v-if="m.id === hostIdLabel" class="badge">Host</span>
-            <span v-if="m.id === myId" class="badge">You</span>
+            <span v-if="m.id === hostIdLabel" class="badge">房主</span>
+            <span v-if="m.id === myId" class="badge">你</span>
           </li>
         </ul>
         <div class="setup-actions">
           <button class="secondary" @click="refreshPresence">Refresh</button>
           <button class="primary" :disabled="!canStartOnline" @click="startGame">Start Game (Host)</button>
         </div>
-        <p class="hint">Requires at least 2 members; only Host can start.</p>
+        <p class="hint">至少需要兩名玩家，由房主開始遊戲。</p>
       </div>
     </section>
 
@@ -174,6 +174,7 @@
       @accept-offer="onCowAcceptOffer"
       @counter-offer="onCowCounterOffer"
       @counter-confirm="onCowCounterConfirm"
+      @counter-cancel="onCowCounterCancel"
       @cancel="onCowCancelled"
     />
     <!-- Turn End -->
@@ -198,10 +199,6 @@
     <section v-else class="view">
       <p>Unknown phase: {{ phase }}</p>
     </section>
-
-    <div class="panel">
-      <button class="secondary" @click="endNowForDev">Dev: End Now and Score</button>
-    </div>
 
   </div>
   
@@ -564,6 +561,20 @@ function onCowCounterConfirm(moneyCardIds: string[]) {
   }, { actionId: newId() });
 
   console.log('[DEBUG] onCowCounterConfirm broadcast published');
+}
+
+function onCowCounterCancel() {
+  console.log('[DEBUG] onCowCounterCancel called', {
+    currentPhase: game.phase,
+    myId
+  });
+
+  const myId_local = myId;
+  void broadcast.publish(Msg.Action.CancelCowCounter, {
+    playerId: myId_local
+  }, { actionId: newId() });
+
+  console.log('[DEBUG] onCowCounterCancel broadcast published');
 }
 
 function onCowCancelled() {

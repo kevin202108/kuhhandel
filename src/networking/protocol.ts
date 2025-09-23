@@ -20,6 +20,7 @@ export const Msg = {
     AcceptCowOffer: 'action.acceptCowOffer',
     CounterCowOffer: 'action.counterCowOffer',
     CommitCowCounter: 'action.commitCowCounter',
+    CancelCowCounter: 'action.cancelCowCounter',
     HostAward: 'action.hostAward',
     HostBuyback: 'action.hostBuyback',
     ConfirmBuyback: 'action.confirmBuyback',
@@ -57,6 +58,7 @@ export interface PayloadByType {
   [Msg.Action.AcceptCowOffer]: { playerId: string };
   [Msg.Action.CounterCowOffer]: { playerId: string };
   [Msg.Action.CommitCowCounter]: { playerId: string; moneyCardIds: string[] };
+  [Msg.Action.CancelCowCounter]: { playerId: string };
   [Msg.Action.HostAward]: { playerId: string };
   [Msg.Action.HostBuyback]: { playerId: string };
   [Msg.Action.ConfirmBuyback]: { playerId: string; moneyCardIds: string[] };

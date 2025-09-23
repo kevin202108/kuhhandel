@@ -205,6 +205,14 @@ export const useCowStore = defineStore('cow', {
       this.revealAndSettle();
     },
 
+    // 目標玩家在回價階段返回上一步（回到選擇接受/回價）
+    cancelCounter() {
+      const game = useGameStore();
+      if (game.phase !== 'cow.selectMoney') return;
+      game.phase = 'cow.choose';
+      this.syncGameCow();
+    },
+
     // 目標玩家接受出價：發起者直接贏得交易，不交換錢卡
     revealAcceptedAndSettle() {
       const game = useGameStore();
