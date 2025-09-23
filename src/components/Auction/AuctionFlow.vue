@@ -182,8 +182,8 @@ function onToggleMoneyCard(cardId: string) {
 
 /* Auctioneer Info Panel */
 .auctioneer-info {
-  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-  border: 2px solid #60a5fa;
+  background: linear-gradient(135deg, var(--c-accent-800) 0%, var(--c-accent) 100%);
+  border: 2px solid var(--c-accent-border);
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 16px;
@@ -197,8 +197,8 @@ function onToggleMoneyCard(cardId: string) {
 .auction-details { display: flex; gap: 20px; align-items: center; }
 .animal-display, .animal-score, .highest-bid { display: flex; align-items: center; gap: 6px; }
 .label { color: #93c5fd; font-size: 12px; font-weight: 600; }
-.animal-name, .highest-amount { color: #ffffff; font-size: 18px; font-weight: 800; }
-.animal-points { color: #fbbf24; font-size: 18px; font-weight: 800; }
+.animal-name, .highest-amount { color: var(--c-text-strong); font-size: 18px; font-weight: 800; }
+.animal-points { color: var(--c-warning); font-size: 18px; font-weight: 800; }
 .highest-bidder-highlight {
   color: #fff; font-size: 16px; font-weight: 700; margin-left: 12px; background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   padding: 4px 12px; border-radius: 8px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4); animation: bounce-in 0.6s ease-out;

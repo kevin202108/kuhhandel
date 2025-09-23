@@ -122,8 +122,8 @@ const cancelSelection = () => {
 }
 
 .trade-info {
-  background: #1f2937;
-  border: 1px solid #4b5563;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
   border-radius: 8px;
   padding: 12px;
   margin-bottom: 16px;
@@ -132,12 +132,12 @@ const cancelSelection = () => {
 
 .trade-info p {
   margin: 4px 0;
-  color: #f9fafb;
+  color: var(--c-text);
 }
 
 .trade-amount {
   font-weight: bold;
-  color: #60a5fa;
+  color: var(--c-accent);
   font-size: 16px;
 }
 
@@ -149,12 +149,12 @@ const cancelSelection = () => {
 }
 
 .animal-card {
-  border: 2px solid #4b5563;
+  border: 2px solid var(--c-border);
   border-radius: 12px;
   padding: 12px;
   cursor: pointer;
-  background: #374151;
-  color: #f9fafb;
+  background: var(--c-surface-2);
+  color: var(--c-text);
   transition: all 0.2s ease;
   display: flex;
   flex-direction: column;
@@ -163,14 +163,14 @@ const cancelSelection = () => {
 }
 
 .animal-card:hover {
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
 }
 
 .animal-card.selected {
-  border-color: #10b981;
+  border-color: var(--c-success);
   box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
-  background: #064e3b;
+  background: var(--c-success-surface-2);
 }
 
 .animal-icon {
@@ -186,7 +186,7 @@ const cancelSelection = () => {
   font-size: 16px;
   font-weight: bold;
   margin-bottom: 8px;
-  color: #ffffff;
+  color: var(--c-text-strong);
 }
 
 .animal-counts {
@@ -195,13 +195,9 @@ const cancelSelection = () => {
   font-size: 14px;
 }
 
-.my-count {
-  color: #10b981;
-}
+.my-count { color: var(--c-success); }
 
-.target-count {
-  color: #f59e0b;
-}
+.target-count { color: var(--c-warning); }
 
 .actions {
   display: flex;

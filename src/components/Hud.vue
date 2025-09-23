@@ -80,11 +80,11 @@ function isNewlyAwarded(p: Player, a: Animal): boolean {
 
 <style scoped>
 .hud {
-  border: 1px solid #4b5563;
+  border: 1px solid var(--c-border);
   border-radius: 12px;
   padding: 12px;
-  background: #1f2937;
-  color: #f9fafb;
+  background: var(--c-surface);
+  color: var(--c-text);
   display: grid;
   row-gap: 14px;
 }
@@ -94,25 +94,25 @@ function isNewlyAwarded(p: Player, a: Animal): boolean {
   align-items: baseline;
   gap: 8px;
 }
-.phase .label { color: #9ca3af; }
-.deck strong, .phase strong { font-weight: 700; color: #ffffff; }
-.players h4, .log h4 { margin: 0 0 6px; font-size: 14px; color: #d1d5db; }
+.phase .label { color: var(--c-text-dimmer); }
+.deck strong, .phase strong { font-weight: 700; color: var(--c-text-strong); }
+.players h4, .log h4 { margin: 0 0 6px; font-size: 14px; color: var(--c-text-muted); }
 .plist { list-style: none; padding: 0; margin: 0; display: grid; row-gap: 10px; }
-.pitem { border: 1px solid #4b5563; border-radius: 10px; padding: 8px; background: #374151; color: #f9fafb; }
-.pitem.active { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.3) inset; }
+.pitem { border: 1px solid var(--c-border); border-radius: 10px; padding: 8px; background: var(--c-surface-2); color: var(--c-text); }
+.pitem.active { border-color: var(--c-primary); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.3) inset; }
 .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .head .name { display: flex; align-items: center; gap: 6px; }
 .money-count { font-weight: 600; }
-.pid code { background: #4b5563; padding: 2px 6px; border-radius: 6px; color: #f9fafb; }
+.pid code { background: var(--c-border); padding: 2px 6px; border-radius: 6px; color: var(--c-text); }
 .money { font-weight: 600; }
-.count { color: #9ca3af; font-weight: 400; margin-left: 4px; }
+.count { color: var(--c-text-dimmer); font-weight: 400; margin-left: 4px; }
 .animals { display: flex; gap: 8px; }
-.animal { font-variant-numeric: tabular-nums; background: #1f2937; border: 1px solid #4b5563; padding: 2px 6px; border-radius: 8px; color: #f9fafb; }
+.animal { font-variant-numeric: tabular-nums; background: var(--c-surface); border: 1px solid var(--c-border); padding: 2px 6px; border-radius: 8px; color: var(--c-text); }
 .animal.zero { opacity: 0.55; }
 .newly-awarded {
   background: #fef3f2;
-  color: #dc2626;
-  border-color: #dc2626;
+  color: var(--c-danger);
+  border-color: var(--c-danger);
   animation: award-flash 2s ease-in-out;
 }
 @keyframes award-flash {
@@ -124,10 +124,10 @@ function isNewlyAwarded(p: Player, a: Animal): boolean {
   100% { transform: scale(1); background: #fef3f2; }
 }
 .dot { width: 8px; height: 8px; border-radius: 9999px; background: #6b7280; display: inline-block; }
-.dot.on { background: #10b981; }
-.loglist { margin: 0; padding-left: 18px; color: #f9fafb; }
-.muted { color: #9ca3af; font-style: italic; }
+.dot.on { background: var(--c-success); }
+.loglist { margin: 0; padding-left: 18px; color: var(--c-text); }
+.muted { color: var(--c-text-dimmer); font-style: italic; }
 .animal-points {
-  color: #fbbf24; /* 金黃色，代表分數 */
+  color: var(--c-warning); /* 金黃色，代表分數 */
 }
 </style>

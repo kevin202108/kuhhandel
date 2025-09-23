@@ -28,7 +28,9 @@
   --c-danger-contrast: #fca5a5;
 
   --c-warning: #f59e0b;
-  --c-accent: #3b82f6;
+  --c-accent: #3b82f6;        /* blue accent */
+  --c-accent-800: #1e3a8a;    /* deep accent for gradients */
+  --c-accent-border: #60a5fa; /* light accent border */
 
   /* Typography */
   --font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
@@ -120,6 +122,7 @@ body {
   color: var(--c-text-strong);
   transition: transform .05s ease, opacity var(--t-normal), box-shadow var(--t-normal), background var(--t-normal), color var(--t-normal), border-color var(--t-normal);
 }
+.ui-btn:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
 .ui-btn:active { transform: translateY(1px); }
 .ui-btn:disabled { opacity: .55; cursor: not-allowed; }
 .ui-btn.no-dim-when-disabled:disabled { opacity: 1; }
@@ -138,6 +141,13 @@ body {
   border: 1px solid var(--c-border);
   background: var(--c-surface-2);
   color: var(--c-text);
+}
+
+/* Panel variants */
+.ui-panel.is-accent {
+  background: linear-gradient(135deg, var(--c-accent-800) 0%, var(--c-accent) 100%);
+  border: 2px solid var(--c-accent-border);
+  color: var(--c-text-strong);
 }
 
 /* Helpful component styles */

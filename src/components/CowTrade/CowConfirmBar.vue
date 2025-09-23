@@ -154,50 +154,28 @@ const cancelTrade = () => {
 }
 
 .trade-summary {
-  background: #1f2937;
-  border: 1px solid #4b5563;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
   border-radius: 8px;
   padding: 12px;
   margin-bottom: 16px;
 }
 
-.trade-summary h4 {
-  margin: 0 0 8px 0;
-  color: #f9fafb;
-}
+.trade-summary h4 { margin: 0 0 8px 0; color: var(--c-text); }
 
-.summary-details p {
-  margin: 4px 0;
-  color: #f9fafb;
-}
+.summary-details p { margin: 4px 0; color: var(--c-text); }
 
-.summary-details strong {
-  color: #60a5fa;
-}
+.summary-details strong { color: var(--c-accent); }
 
-.selection-summary {
-  margin: 16px 0;
-  text-align: center;
-}
+.selection-summary { margin: 16px 0; text-align: center; }
 
-.total-display {
-  font-size: 16px;
-  color: #f9fafb;
-}
+.total-display { font-size: 16px; color: var(--c-text); }
 
-.total-display strong {
-  font-size: 18px;
-  color: #10b981;
-}
+.total-display strong { font-size: 18px; color: var(--c-success); }
 
-.total-display strong.insufficient {
-  color: #ef4444;
-}
+.total-display strong.insufficient { color: var(--c-danger); }
 
-.warning {
-  color: #ef4444;
-  font-weight: bold;
-}
+.warning { color: var(--c-danger); font-weight: bold; }
 
 .actions {
   display: flex;

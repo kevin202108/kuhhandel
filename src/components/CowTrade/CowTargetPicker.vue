@@ -107,31 +107,31 @@ const cancelSelection = () => {
 }
 
 .target-card {
-  border: 2px solid #4b5563;
+  border: 2px solid var(--c-border);
   border-radius: 12px;
   padding: 12px;
   cursor: pointer;
-  background: #374151;
-  color: #f9fafb;
+  background: var(--c-surface-2);
+  color: var(--c-text);
   transition: all 0.2s ease;
 }
 
 .target-card:hover {
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
 }
 
 .target-card.selected {
-  border-color: #10b981;
+  border-color: var(--c-success);
   box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
-  background: #064e3b;
+  background: var(--c-success-surface-2);
 }
 
 .player-name {
   font-size: 18px;
   font-weight: bold;
   margin-bottom: 8px;
-  color: #ffffff;
+  color: var(--c-text-strong);
 }
 
 .player-info {
@@ -140,10 +140,7 @@ const cancelSelection = () => {
   gap: 8px;
 }
 
-.money-count {
-  font-weight: 600;
-  color: #fbbf24;
-}
+.money-count { font-weight: 600; color: var(--c-warning); }
 
 .animals-preview {
   display: flex;
@@ -152,12 +149,12 @@ const cancelSelection = () => {
 }
 
 .animal-badge {
-  background: #1f2937;
-  border: 1px solid #4b5563;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
   padding: 4px 8px;
   border-radius: 6px;
   font-size: 12px;
-  color: #f9fafb;
+  color: var(--c-text);
 }
 
 .actions {
