@@ -106,17 +106,17 @@
           <template v-if="game.auction?.reveal?.mode === 'award'">
             <p>
               <strong>{{ nameOf(game.auction?.reveal?.payerId || '') }}</strong>
-              支付 <strong>{{ game.auction?.reveal?.amount }}</strong>
+              取得 <strong>{{ auctionAnimalName }}</strong>
+              ，支付 🪙<strong>{{ game.auction?.reveal?.amount }}</strong>
               給 <strong>{{ nameOf(game.auction?.reveal?.payeeId || '') }}</strong>
-              ，取得 <strong>{{ auctionAnimalName }}</strong>
             </p>
           </template>
           <template v-else-if="game.auction?.reveal?.mode === 'buyback'">
             <p>
               拍賣者 <strong>{{ nameOf(auctioneerId) }}</strong>
-              支付 <strong>{{ game.auction?.reveal?.amount }}</strong>
+              買回 <strong>{{ auctionAnimalName }}</strong>
+              ，支付 🪙<strong>{{ game.auction?.reveal?.amount }}</strong>
               給 <strong>{{ nameOf(game.auction?.reveal?.payeeId || '') }}</strong>
-              ，買回 <strong>{{ auctionAnimalName }}</strong>
             </p>
           </template>
           <template v-else>
