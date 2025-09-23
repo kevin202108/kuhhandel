@@ -34,14 +34,6 @@
         </li>
       </ul>
     </section>
-
-    <!-- <section class="log">
-      <h4>Log</h4>
-      <ol class="loglist">
-        <li v-if="!log || log.length === 0" class="muted">(empty)</li>
-        <li v-for="(entry, i) in log" :key="i">{{ entry }}</li>
-      </ol>
-    </section> -->
   </aside>
 </template>
 
