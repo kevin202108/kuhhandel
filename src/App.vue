@@ -19,24 +19,11 @@
     </section>
 
     <!-- Turn Choice -->
-    <section v-else-if="phase === 'turn.choice'" class="view turn-choice">
-      <div class="panel">
-        <h2>Choose Action ({{ activePlayer?.name }})</h2>
-        <div v-if="myId === game.turnOwnerId">
-          <TurnChoice
-            :canAuction="game.canChooseAuction"
-            :canCowTrade="game.canChooseCowTrade"
-            :isFirstRound="isFirstRound"
-            :isMyTurn="myId === game.turnOwnerId"
-            @choose-auction="onChooseAuction"
-            @choose-cow-trade="onChooseCowTrade"
-          />
-        </div>
-        <div v-else class="muted">
-          Waiting for {{ activePlayer?.name }} to choose…
-        </div>
-      </div>
-    </section>
+    <TurnChoiceView
+      v-else-if="phase === 'turn.choice'"
+      @choose-auction="onChooseAuction"
+      @choose-cow-trade="onChooseCowTrade"
+    />
 
     <!-- Auction -->
     <AuctionFlow
@@ -67,19 +54,7 @@
     
 
     <!-- Game End -->
-    <section v-else-if="phase === 'game.end'" class="view game-end">
-      <div class="panel">
-        <h2>Game Over</h2>
-        <ol class="scores">
-          <li v-for="s in finalScores" :key="s.playerId">
-            <strong>{{ nameOf(s.playerId) }}</strong>: {{ s.score }}
-          </li>
-        </ol>
-        <div class="actions">
-          <button class="secondary" @click="resetToSetup">Restart</button>
-        </div>
-      </div>
-    </section>
+    <GameEnd v-else-if="phase === 'game.end'" @restart="resetToSetup" />
 
     <!-- Fallback -->
     <section v-else class="view">
@@ -93,10 +68,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import Hud from '@/components/Hud.vue';
-import TurnChoice from '@/components/TurnChoice.vue';
+import TurnChoiceView from '@/components/TurnChoice/TurnChoiceView.vue';
 import AuctionFlow from '@/components/Auction/AuctionFlow.vue';
 import CowTrade from '@/components/CowTrade/CowTrade.vue';
 import SetupLobby from '@/components/Setup/SetupLobby.vue';
+import GameEnd from '@/components/GameEnd.vue';
 
 import { useGameStore } from '@/store/game';
 import { useCowStore } from '@/store/cow';
@@ -139,26 +115,15 @@ function startGame() {
 const phase = computed<Phase>(() => game.phase);
 const players = computed<Player[]>(() => game.players);
 const deckCount = computed(() => game.deck.length);
-const activePlayer = computed<Player | undefined>(() => game.activePlayer);
-const isFirstRound = computed(() => {
-  // Every player has 0 animals
-  return players.value.every(p => {
-    const counts = Object.values(p.animals || {});
-    return counts.reduce((a, b) => a + (b || 0), 0) === 0;
-  });
-});
 // Auction-specific derived state now lives in AuctionFlow
 
 // 階段分組判斷
 const isAuctionPhase = computed(() => phase.value.startsWith('auction.'));
 const isCowTradePhase = computed(() => phase.value.startsWith('cow.'));
-const finalScores = computed(() => game.computeFinalScores());
 
 // Auction buyback selection now handled by AuctionFlow
 
-function nameOf(id: string) {
-  return players.value.find(p => p.id === id)?.name ?? id;
-}
+// GameEnd handles name formatting internally
 
 /** --------------------------
  * Event handlers
@@ -375,50 +340,6 @@ function onCowCancelled() {
   max-width: 1080px;
   margin: 0 auto;
 }
-h1, h2 { margin: 0 0 12px; }
-.sub { opacity: 0.8; margin-bottom: 16px; }
-
-.panel {
-  background: #121a33;
-  border: 1px solid #223055;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.25);
-}
-
-/* setup-specific styles moved to SetupLobby.vue */
-
-.actions {
-  margin-top: 16px;
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-button {
-  appearance: none;
-  border: 1px solid #35508a;
-  background: #1a2748;
-  color: #e7e9ee;
-  padding: 8px 12px;
-  border-radius: 10px;
-  cursor: pointer;
-}
-button.primary { background: #2a5ad1; border-color: #2a5ad1; }
-button.secondary { background: #203258; }
-button.ghost { background: transparent; }
-
-button:disabled { opacity: .5; cursor: not-allowed; }
-
-.scores {
-  margin: 8px 0 0;
-  padding: 0 0 0 18px;
-}
-/* setup list styles moved to SetupLobby.vue */
-.muted { color: #6b7280; font-size: 12px; }
-
-/* Auction styles moved to AuctionFlow.vue */
-
 </style>
 
 
