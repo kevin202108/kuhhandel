@@ -13,36 +13,9 @@
     </header>
     <div v-if="hostChangedMsg" class="banner">{{ hostChangedMsg }}</div>
 
-    <!-- Setup Screen (NameEntry / Lobby) -->
+    <!-- Setup / Lobby -->
     <section v-if="phase === 'setup'" class="view setup">
-      <h1>幕後交易 KUHHANDEL</h1>
-
-      <!-- NameEntry when displayName is not set -->
-      <div v-if="!hasDisplayName" class="panel">
-        <h2>Enter Your Display Name</h2>
-        <div class="players-setup">
-          <SetupForm @confirm="onNameConfirm" />
-          <p class="hint">Display name is for UI only (max 12 chars).</p>
-        </div>
-      </div>
-
-      <!-- Lobby when already joined -->
-      <div v-else class="panel">
-        <h2>大廳 (房間: {{ roomId }})</h2>
-        <p class="hint">房主: <code>{{ hostIdLabel }}</code></p>
-        <ul class="plist">
-          <li v-for="m in members" :key="m.id">
-            <strong>{{ m.data?.name || m.id }}</strong> <code>({{ m.id }})</code>
-            <span v-if="m.id === hostIdLabel" class="badge">房主</span>
-            <span v-if="m.id === myId" class="badge">你</span>
-          </li>
-        </ul>
-        <div class="setup-actions">
-          <button class="secondary" @click="refreshPresence">Refresh</button>
-          <button class="primary" :disabled="!canStartOnline" @click="startGame">Start Game (Host)</button>
-        </div>
-        <p class="hint">至少需要兩名玩家，由房主開始遊戲。</p>
-      </div>
+      <SetupLobby @start-game="startGame" />
     </section>
 
     <!-- Turn Choice -->
@@ -212,7 +185,7 @@ import AuctionBidderView from '@/components/Auction/AuctionBidderView.vue';
 import AuctionHostView from '@/components/Auction/AuctionHostView.vue';
 import MoneyPad from '@/components/MoneyPad.vue';
 import CowTrade from '@/components/CowTrade/CowTrade.vue';
-import SetupForm from '@/components/SetupForm.vue';
+import SetupLobby from '@/components/Setup/SetupLobby.vue';
 
 import { useGameStore } from '@/store/game';
 import { useAuctionStore } from '@/store/auction';
@@ -226,29 +199,8 @@ import { newId } from '@/utils/id';
 const game = useGameStore();
 const auction = useAuctionStore();
 
-// Presence helpers (Phase 2)
-const url = new URL(location.href);
+// Identity used across views
 const myId = ((globalThis as any).__PLAYER__ as string) || (sessionStorage.getItem('playerId') || '');
-const roomId = (url.searchParams.get('room') ?? 'dev').toLowerCase().trim();
-const hasDisplayName = !!(sessionStorage.getItem('displayName') || '');
-type Member = { id: string; data?: { playerId: string; name: string } };
-const members = ref<Member[]>([]);
-async function refreshPresence() {
-  try { members.value = await broadcast.presence().getMembers(); } catch { /* ignore */ }
-}
-const hostIdLabel = computed(() => game.hostId || members.value.map(m => m.id).sort()[0] || '');
-
-// NameEntry action (store displayName then reload)
-function onNameConfirm(name: string) {
-  const t = (name || '').trim().slice(0, 12);
-  if (!t) return;
-  try { sessionStorage.setItem('displayName', t); } catch { /* ignore */ }
-  // Reload to let main.ts complete presence enter + join flow
-  location.reload();
-}
-
-// Start gating (Host only, >=2 members)
-const canStartOnline = computed(() => (hostIdLabel.value === myId) && members.value.length >= 2);
 
 // Host change banner
 const hostChangedMsg = ref<string | null>(null);
@@ -261,15 +213,7 @@ watch(() => game.hostId, (newHost, oldHost) => {
   }
 });
 
-onMounted(() => {
-  if (game.phase === 'setup') void refreshPresence();
-  const t = window.setInterval(() => { if (game.phase === 'setup') void refreshPresence(); }, 1200);
-  (window as any).__presenceTimer = t;
-});
-onUnmounted(() => {
-  const t = (window as any).__presenceTimer as number | undefined;
-  if (t) window.clearInterval(t);
-});
+// Setup/Lobby presence handling moved into SetupLobby
 
 // 監聽最高出價更新，觸發動畫重新播放
 watch(() => game.auction?.highest, (newHighest, oldHighest) => {
