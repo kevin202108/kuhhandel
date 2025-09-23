@@ -48,6 +48,7 @@
       @counter-offer="onCowCounterOffer"
       @counter-confirm="onCowCounterConfirm"
       @counter-cancel="onCowCounterCancel"
+      @reveal-continue="onCowRevealContinue"
       @cancel="onCowCancelled"
     />
     <!-- Turn End -->
@@ -303,6 +304,18 @@ function onCowCounterCancel() {
   }, { actionId: newId() });
 
   console.log('[DEBUG] onCowCounterCancel broadcast published');
+}
+
+function onCowRevealContinue() {
+  console.log('[DEBUG] onCowRevealContinue called', {
+    currentPhase: game.phase,
+    myId
+  });
+  const myId_local = myId;
+  void broadcast.publish(Msg.Action.ProceedCowReveal, {
+    playerId: myId_local
+  }, { actionId: newId() });
+  console.log('[DEBUG] onCowRevealContinue broadcast published');
 }
 
 function onCowCancelled() {

@@ -159,14 +159,16 @@
       </div>
     </section>
 
-    <!-- 階段 6: 結果揭曉 (所有人可見) -->
+    <!-- 階段 6: 結果揭曉（參與者可見出價；其他玩家只見結果） -->
     <section v-else-if="phase === 'cow.reveal'" class="view cow-trade">
       <h2>🐄 牛交易：結果揭曉</h2>
       <div class="ui-panel">
         <div class="reveal-info">
           <p><strong>交易動物：</strong>{{ tradeAnimal }}</p>
           <p><strong>交易數量：</strong>{{ tradeAmount }} 隻</p>
-          <div class="bids-reveal">
+
+          <!-- 僅參與者可見雙方出價 -->
+          <div v-if="isParticipant" class="bids-reveal">
             <div class="bid-item">
               <strong>{{ initiatorName }} 出價：</strong>{{ initiatorBid }}
             </div>
@@ -174,19 +176,22 @@
               <strong>{{ targetName }} 出價：</strong>{{ targetBid }}
             </div>
           </div>
+
           <div class="result">
-            <p v-if="winner === 'initiator'" class="winner">
+            <p v-if="resolvedWinner === 'initiator'" class="winner">
               🎉 {{ initiatorName }} 獲勝！獲得 {{ tradeAmount }} 隻 {{ tradeAnimal }}
             </p>
-            <p v-else-if="winner === 'target'" class="winner">
+            <p v-else-if="resolvedWinner === 'target'" class="winner">
               🎉 {{ targetName }} 獲勝！獲得 {{ tradeAmount }} 隻 {{ tradeAnimal }}
             </p>
-            <p v-else-if="winner === 'tie'" class="tie">
+            <p v-else-if="resolvedWinner === 'tie'" class="tie">
               🤝 平手，沒有動物交換
             </p>
-            <p v-else class="muted">
-              正在計算結果...
-            </p>
+            <p v-else class="muted">正在計算結果...</p>
+          </div>
+
+          <div v-if="isHost" class="actions">
+            <button class="ui-btn is-primary" @click="onRevealContinue">繼續</button>
           </div>
         </div>
       </div>
@@ -225,6 +230,7 @@ const emit = defineEmits<{
   'counter-offer': []
   'counter-confirm': [moneyCardIds: string[]]
   'counter-cancel': []
+  'reveal-continue': []
 }>()
 
 // 從 URL 獲取當前玩家 ID
@@ -320,6 +326,12 @@ const winner = computed(() => {
   return 'tie'
 })
 
+// Host 與公開揭曉結果（參與者未必有完整出價）
+const isHost = computed(() => game.hostId === myId)
+const resolvedWinner = computed(() => {
+  return (winner.value as 'initiator' | 'target' | 'tie' | null) ?? (game.cow?.revealWinner ?? null)
+})
+
 // 事件處理函數
 function onTargetSelected(targetId: string) {
   emit('target-selected', targetId)
@@ -351,6 +363,10 @@ function onCounterConfirm(moneyCardIds: string[]) {
 
 function onCounterCancel() {
   emit('counter-cancel')
+}
+
+function onRevealContinue() {
+  emit('reveal-continue')
 }
 </script>
 
@@ -436,4 +452,6 @@ function onCounterCancel() {
 }
 
 /* Buttons standardized via .ui-btn classes */
+
+.actions { margin-top: 12px; text-align: center; }
 </style>

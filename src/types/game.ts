@@ -46,6 +46,7 @@ export interface CowTradeState {
   targetSecret?: string[];
   initiatorCardCount?: number;
   targetCardCount?: number;
+  revealWinner?: 'initiator' | 'target' | 'tie';
 }
 
 export interface GameState {

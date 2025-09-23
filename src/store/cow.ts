@@ -34,6 +34,7 @@ export const useCowStore = defineStore('cow', {
     targetSecret: undefined,
     initiatorCardCount: undefined,
     targetCardCount: undefined,
+    revealWinner: undefined,
   }),
 
   getters: {
@@ -122,6 +123,7 @@ export const useCowStore = defineStore('cow', {
         targetAnimal: this.targetAnimal,
         initiatorCardCount: this.initiatorCardCount,
         targetCardCount: this.targetCardCount,
+        revealWinner: this.revealWinner,
         // 注意：secret 不應該同步到所有玩家，只在 host 端記憶
       };
       // 強制觸發 game store 的更新以廣播狀態變化
@@ -132,6 +134,7 @@ export const useCowStore = defineStore('cow', {
         targetAnimal: this.targetAnimal,
         initiatorCardCount: this.initiatorCardCount,
         targetCardCount: this.targetCardCount,
+        revealWinner: this.revealWinner,
         gamePhase: game.phase,
         cowState: (game as any).cow
       });
@@ -180,7 +183,8 @@ export const useCowStore = defineStore('cow', {
       const game = useGameStore();
       // 發起者贏得交易，目標不付錢
       game.phase = 'cow.reveal';
-      this.revealAcceptedAndSettle();
+      this.revealWinner = 'initiator';
+      this.syncGameCow();
     },
 
     // 目標玩家選擇提出回價
@@ -200,9 +204,18 @@ export const useCowStore = defineStore('cow', {
       });
       this.targetSecret = moneyCardIds;
       this.targetCardCount = moneyCardIds.length;
+      // 計算勝負公開（不公開出價明細）並停在 reveal，等待 Host 續行
+      try {
+        const initiator = getPlayerById(game.$state, this.initiatorId!);
+        const target = getPlayerById(game.$state, this.targetPlayerId!);
+        const initTotal = moneyTotalOf(initiator, this.initiatorSecret!);
+        const targTotal = moneyTotalOf(target, this.targetSecret!);
+        this.revealWinner = initTotal > targTotal ? 'initiator' : (targTotal > initTotal ? 'target' : 'tie');
+      } catch {
+        this.revealWinner = undefined;
+      }
       this.syncGameCow();
       game.phase = 'cow.reveal';
-      this.revealAndSettle();
     },
 
     // 目標玩家在回價階段返回上一步（回到選擇接受/回價）
@@ -345,6 +358,7 @@ export const useCowStore = defineStore('cow', {
       this.targetSecret = undefined;
       this.initiatorCardCount = undefined;
       this.targetCardCount = undefined;
+      this.revealWinner = undefined;
     },
   },
 });
