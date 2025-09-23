@@ -10,8 +10,7 @@ export function useCowTrade() {
   const cow = useCowStore()
 
   // 從 URL 獲取當前玩家 ID
-  const url = new URL(location.href)
-  const myId = url.searchParams.get('player')?.toLowerCase().trim() || ''
+  const myId = ((globalThis as any).__PLAYER__ as string) || (sessionStorage.getItem('playerId') || '')
 
   function selectTarget(targetId: string) {
     void broadcast.publish(Msg.Action.SelectCowTarget, {

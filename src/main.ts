@@ -21,8 +21,34 @@ import { getHostId } from '@/services/host-election';
 // ---- URL flags嚗? README 閬?銝?湛?
 const url = new URL(location.href);
 const ROOM = (url.searchParams.get('room') ?? 'dev').toLowerCase().trim();
-const PLAYER = (url.searchParams.get('player') ?? '').toLowerCase().trim();
 const DEBUG = url.searchParams.get('debug') === '1';
+
+// Session-scoped player identity (auto-generated), independent from URL
+function generatePlayerId(len = 12): string {
+  const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789_-';
+  let s = '';
+  for (let i = 0; i < len; i++) s += alphabet[Math.floor(Math.random() * alphabet.length)];
+  return s;
+}
+
+function ensurePlayerId(): string {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const g = globalThis as any;
+  if (typeof g.__PLAYER__ === 'string' && g.__PLAYER__) return g.__PLAYER__;
+  let fromSession = '';
+  try { fromSession = sessionStorage.getItem('playerId') || ''; } catch { /* ignore */ }
+  if (fromSession) { g.__PLAYER__ = fromSession; return fromSession; }
+  const id = generatePlayerId();
+  try { sessionStorage.setItem('playerId', id); } catch { /* ignore */ }
+  g.__PLAYER__ = id;
+  return id;
+}
+
+function readDisplayName(): string {
+  try { return (sessionStorage.getItem('displayName') || '').slice(0, 12); } catch { return ''; }
+}
+
+const PLAYER = ensurePlayerId();
 
 // ?迂摮???README嚗[a-z0-9_-]{1,24}$嚗?
 const ID_RE = /^[a-z0-9_-]{1,24}$/;
@@ -96,7 +122,6 @@ void (async function bootstrapPhase2() {
     }
 
     assertIdOrThrow(ROOM, 'roomId');
-    assertIdOrThrow(PLAYER, 'playerId');
 
     // 1) ????Ably嚗lientId === playerId嚗ormalize ??ablyClient.ts 銋?????甈∴?
     await initAbly(PLAYER);
@@ -107,11 +132,18 @@ void (async function bootstrapPhase2() {
     if (DEBUG) console.debug('[main] Channel attached:', `game-v1-${ROOM}`);
 
     // 3) presence.enter嚗ame ? playerId嚗ameEntry 銋??航?撖恬?
-    await presence.enter(ROOM, { playerId: PLAYER, name: PLAYER });
+    // Wait for displayName to be available before joining presence
+    const NAME = readDisplayName();
+    if (!NAME) {
+      if (DEBUG) console.debug('[main] No displayName yet — waiting for Setup to submit.');
+      exposeDebugHelpers(false);
+      return;
+    }
+    await presence.enter(ROOM, { playerId: PLAYER, name: NAME });
     if (DEBUG) console.debug('[main] presence.enter ok');
 
     // Phase 2 wiring: publish join, elect host, and set up snapshot sync
-    await broadcast.publish(Msg.System.Join, { playerId: PLAYER, name: PLAYER });
+    await broadcast.publish(Msg.System.Join, { playerId: PLAYER, name: NAME });
 
     const game = useGameStore();
     const auction = useAuctionStore();

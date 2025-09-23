@@ -1,41 +1,40 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue';
 
-defineProps<{ msg: string }>()
+const name = ref('');
+const canSubmit = computed(() => {
+  const t = name.value.trim();
+  return t.length > 0 && t.length <= 12;
+});
 
-const count = ref(0)
+const emit = defineEmits<{ (e: 'confirm', name: string): void }>();
+function submit() {
+  if (!canSubmit.value) return;
+  emit('confirm', name.value);
+}
 </script>
 
 <template>
-  <h1>{{ msg }}</h1>
-
-  <div class="card">
-    <button type="button" @click="count++">count is {{ count }}</button>
-    <p>
-      Edit
-      <code>components/HelloWorld.vue</code> to test HMR
-    </p>
+  <div class="player-row">
+    <input v-model.trim="name" placeholder="最多 12 字（任意字元）" maxlength="12" />
+    <button class="primary" :disabled="!canSubmit" @click="submit">Join</button>
   </div>
-
-  <p>
-    Check out
-    <a href="https://vuejs.org/guide/quick-start.html#local" target="_blank"
-      >create-vue</a
-    >, the official Vue + Vite starter
-  </p>
-  <p>
-    Learn more about IDE Support for Vue in the
-    <a
-      href="https://vuejs.org/guide/scaling-up/tooling.html#ide-support"
-      target="_blank"
-      >Vue Docs Scaling up Guide</a
-    >.
-  </p>
-  <p class="read-the-docs">Click on the Vite and Vue logos to learn more</p>
 </template>
 
 <style scoped>
-.read-the-docs {
-  color: #888;
+.player-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+button.primary {
+  padding: 8px 12px;
 }
 </style>
+

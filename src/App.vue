@@ -17,15 +17,12 @@
     <section v-if="phase === 'setup'" class="view setup">
       <h1>幕後交易 KUHHANDEL</h1>
 
-      <!-- NameEntry when no ?player= given -->
-      <div v-if="!myId" class="panel">
-        <h2>Enter Your Name</h2>
+      <!-- NameEntry when displayName is not set -->
+      <div v-if="!hasDisplayName" class="panel">
+        <h2>Enter Your Display Name</h2>
         <div class="players-setup">
-          <div class="player-row">
-            <input v-model.trim="nameInput" placeholder="your-name (a-z0-9_-)" maxlength="16" />
-            <button class="primary" :disabled="!canJoin" @click="joinRoom">Join</button>
-          </div>
-          <p class="hint">Adds ?player= to URL and reloads, then presence joins automatically.</p>
+          <SetupForm @confirm="onNameConfirm" />
+          <p class="hint">Display name is for UI only (max 12 chars).</p>
         </div>
       </div>
 
@@ -218,6 +215,7 @@ import AuctionBidderView from '@/components/Auction/AuctionBidderView.vue';
 import AuctionHostView from '@/components/Auction/AuctionHostView.vue';
 import MoneyPad from '@/components/MoneyPad.vue';
 import CowTrade from '@/components/CowTrade/CowTrade.vue';
+import SetupForm from '@/components/SetupForm.vue';
 
 import { useGameStore } from '@/store/game';
 import { useAuctionStore } from '@/store/auction';
@@ -233,8 +231,9 @@ const auction = useAuctionStore();
 
 // Presence helpers (Phase 2)
 const url = new URL(location.href);
-const myId = (url.searchParams.get('player') ?? '').toLowerCase().trim();
+const myId = ((globalThis as any).__PLAYER__ as string) || (sessionStorage.getItem('playerId') || '');
 const roomId = (url.searchParams.get('room') ?? 'dev').toLowerCase().trim();
+const hasDisplayName = !!(sessionStorage.getItem('displayName') || '');
 type Member = { id: string; data?: { playerId: string; name: string } };
 const members = ref<Member[]>([]);
 async function refreshPresence() {
@@ -242,16 +241,13 @@ async function refreshPresence() {
 }
 const hostIdLabel = computed(() => game.hostId || members.value.map(m => m.id).sort()[0] || '');
 
-// NameEntry data
-const nameInput = ref('');
-const ID_RE = /^[a-z0-9_-]{1,24}$/;
-const canJoin = computed(() => ID_RE.test(nameInput.value.trim().toLowerCase()));
-function joinRoom() {
-  if (!canJoin.value) return;
-  const n = nameInput.value.trim().toLowerCase();
-  const next = new URL(location.href);
-  next.searchParams.set('player', n);
-  location.href = next.toString();
+// NameEntry action (store displayName then reload)
+function onNameConfirm(name: string) {
+  const t = (name || '').trim().slice(0, 12);
+  if (!t) return;
+  try { sessionStorage.setItem('displayName', t); } catch { /* ignore */ }
+  // Reload to let main.ts complete presence enter + join flow
+  location.reload();
 }
 
 // Start gating (Host only, >=2 members)
@@ -289,8 +285,8 @@ watch(() => game.auction?.highest, (newHighest, oldHighest) => {
  * Setup: Start game (host-only, uses presence)
  * -------------------------- */
 function startGame() {
-  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
-  void broadcast.publish(Msg.Action.StartGame, { playerId: myId });
+  const myId_local = myId;
+  void broadcast.publish(Msg.Action.StartGame, { playerId: myId_local });
 }
 
 /** --------------------------
@@ -357,8 +353,8 @@ function nameOf(id: string) {
  * -------------------------- */
 function onChooseAuction() {
   // Route via Ably to host
-  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
-  void broadcast.publish(Msg.Action.ChooseAuction, { playerId: myId });
+  const myId_local = myId;
+  void broadcast.publish(Msg.Action.ChooseAuction, { playerId: myId_local });
 }
 
 function onChooseCowTrade() {
@@ -376,28 +372,28 @@ function onChooseCowTrade() {
 }
 
 function onPlaceBid(playerId: string, moneyCardIds: string[]) {
-  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
-  void broadcast.publish(Msg.Action.PlaceBid, { playerId: myId, moneyCardIds }, { actionId: newId() });
+  const myId_local = myId;
+  void broadcast.publish(Msg.Action.PlaceBid, { playerId: myId_local, moneyCardIds }, { actionId: newId() });
 }
 
 function onPassBid(playerId: string) {
-  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
-  void broadcast.publish(Msg.Action.PassBid, { playerId: myId });
+  const myId_local = myId;
+  void broadcast.publish(Msg.Action.PassBid, { playerId: myId_local });
 }
 
 function onHostAward() {
-  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
-  void broadcast.publish(Msg.Action.HostAward, { playerId: myId });
+  const myId_local = myId;
+  void broadcast.publish(Msg.Action.HostAward, { playerId: myId_local });
 }
 
 function onHostBuyback() {
-  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
+  const myId_local = myId;
   console.log('[DEBUG] onHostBuyback: Initiating buyback', {
-    playerId: myId,
+    playerId: myId_local,
     currentPhase: phase.value,
     canBuyback: canBuyback.value
   });
-  void broadcast.publish(Msg.Action.HostBuyback, { playerId: myId });
+  void broadcast.publish(Msg.Action.HostBuyback, { playerId: myId_local });
 }
 
 function nextTurn() {
@@ -444,7 +440,6 @@ function onConfirmBuyback() {
     });
     return;
   }
-  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
   console.log('[DEBUG] onConfirmBuyback: Confirming buyback', {
     playerId: myId,
     selectedCardIds: selectedMoneyIds.value,
@@ -460,7 +455,6 @@ function onConfirmBuyback() {
 }
 
 function onCancelBuyback() {
-  const myId = new URL(location.href).searchParams.get('player')?.toLowerCase().trim() || '';
   console.log('[DEBUG] onCancelBuyback: Cancelling buyback', {
     playerId: myId,
     previouslySelectedCards: selectedMoneyIds.value

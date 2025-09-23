@@ -116,8 +116,7 @@ const game = useGameStore()
 const auction = useAuctionStore()
 
 // 從 URL 獲取當前玩家 ID
-const url = new URL(location.href)
-const myId = url.searchParams.get('player')?.toLowerCase().trim() || ''
+const myId = ((globalThis as any).__PLAYER__ as string) || (sessionStorage.getItem('playerId') || '')
 
 // 本地狀態
 const selectedMoneyIds = ref<string[]>([])

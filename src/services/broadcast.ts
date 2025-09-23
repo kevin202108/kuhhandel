@@ -76,11 +76,19 @@ function resolveRoomId(): string {
 function resolvePlayerId(): string {
   const g = globalThis as unknown as Record<string, unknown>;
   const fromGlobal = typeof g.__PLAYER__ === 'string' ? (g.__PLAYER__ as string) : undefined;
-  const fromQuery = readQuery('player');
-  const id = normalizeId(fromGlobal ?? fromQuery);
+  let fromSession: string | undefined;
+  try {
+    fromSession = sessionStorage.getItem('playerId') || undefined;
+  } catch {
+    fromSession = undefined;
+  }
+
+  // Sanitize strictly for playerId (no fallback to 'dev')
+  const raw = fromGlobal ?? fromSession;
+  const id = (raw ?? '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 24);
   if (!id) {
-    // 與 ablyClient.assertClient 的「先初始化」保護相輔相成：缺 playerId 代表流程未就緒
-    throw new Error('[Broadcast] Missing playerId (__PLAYER__ or ?player=)');
+    // 缺 playerId 代表流程未就緒（ensurePlayerId 尚未執行）
+    throw new Error('[Broadcast] Missing playerId (__PLAYER__ or sessionStorage.playerId)');
   }
   return id;
 }
