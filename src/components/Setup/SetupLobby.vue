@@ -6,7 +6,14 @@
     <div v-if="!hasDisplayName" class="ui-panel">
       <h2>Enter Your Display Name</h2>
       <div class="players-setup">
-        <SetupForm @confirm="onNameConfirm" />
+        <div class="player-row">
+          <input
+            v-model.trim="name"
+            placeholder="最多 12 字（任意字元）"
+            maxlength="12"
+          />
+          <button class="ui-btn is-primary" :disabled="!canSubmit" @click="submitName">Join</button>
+        </div>
         <p class="hint">Display name is for UI only (max 12 chars).</p>
       </div>
     </div>
@@ -35,7 +42,6 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue';
-import SetupForm from '@/components/Setup/SetupForm.vue';
 import { useGameStore } from '@/store/game';
 import broadcast from '@/services/broadcast';
 
@@ -51,6 +57,13 @@ const myId = ((globalThis as any).__PLAYER__ as string) || (sessionStorage.getIt
 const roomId = (url.searchParams.get('room') ?? 'dev').toLowerCase().trim();
 const hasDisplayName = !!(sessionStorage.getItem('displayName') || '');
 
+// Inline form state
+const name = ref('');
+const canSubmit = computed(() => {
+  const t = name.value.trim();
+  return t.length > 0 && t.length <= 12;
+});
+
 // Presence members
 const members = ref<Member[]>([]);
 async function refreshPresence() {
@@ -64,9 +77,9 @@ const hostIdLabel = computed(() => game.hostId || members.value.map(m => m.id).s
 const canStartOnline = computed(() => (hostIdLabel.value === myId) && members.value.length >= 2);
 
 // NameEntry confirm (store then reload)
-function onNameConfirm(name: string) {
-  const t = (name || '').trim().slice(0, 12);
-  if (!t) return;
+function submitName() {
+  if (!canSubmit.value) return;
+  const t = name.value.trim().slice(0, 12);
   try { sessionStorage.setItem('displayName', t); } catch { /* ignore */ }
   location.reload();
 }
