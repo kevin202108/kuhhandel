@@ -27,13 +27,11 @@
 
       <div class="auction-grid">
         <div
-          v-for="p in players"
-          :key="p.id"
+          v-if="myPlayer && myId !== auctioneerId"
           class="auction-col"
         >
           <AuctionBidderView
-            v-if="p.id === myId && myId !== auctioneerId"
-            :self="p"
+            :self="myPlayer"
             :highest="game.auction?.highest"
             :nameOf="nameOf"
             @place-bid="(ids:string[]) => emit('place-bid', myId, ids)"
@@ -125,6 +123,7 @@ const game = useGameStore();
 const auction = useAuctionStore();
 
 const players = computed<Player[]>(() => game.players);
+const myPlayer = computed<Player | undefined>(() => players.value.find(p => p.id === myId));
 const myId = ((globalThis as any).__PLAYER__ as string) || (sessionStorage.getItem('playerId') || '');
 const auctioneerId = computed(() => auction.auction?.auctioneerId ?? game.turnOwnerId);
 const canBuyback = computed(() => auction.canAuctioneerBuyback);
@@ -170,8 +169,14 @@ function onToggleMoneyCard(cardId: string) {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 12px;
+  justify-content: center;
 }
-.auction-col { min-width: 0; }
+.auction-col {
+  min-width: 0;
+  justify-self: center;
+  width: 100%;
+  max-width: 640px;
+}
 .muted { color: #6b7280; font-size: 12px; }
 .compact-host { padding: 8px; }
 
