@@ -375,8 +375,8 @@ function onCounterCancel() {
 .spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #3498db;
+  border: 4px solid var(--c-border);
+  border-top: 4px solid var(--c-primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 1rem auto;
@@ -388,12 +388,7 @@ function onCounterCancel() {
   100% { transform: rotate(360deg); }
 }
 
-.trade-info {
-  background: #1e3a8a;
-  padding: 1rem;
-  border-radius: 8px;
-  margin-bottom: 1rem;
-}
+.trade-info { background: var(--c-accent-800); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
 
 .bids-reveal {
   display: flex;
@@ -406,12 +401,12 @@ function onCounterCancel() {
   flex: 1;
   text-align: center;
   padding: 0.5rem;
-  background: #374151;
+  background: var(--c-surface-2);
   border-radius: 4px;
 }
 
 .winner {
-  color: #10b981;
+  color: var(--c-success);
   font-size: 1.2rem;
   text-align: center;
   margin: 1rem 0;
@@ -419,7 +414,7 @@ function onCounterCancel() {
 }
 
 .tie {
-  color: #f59e0b;
+  color: var(--c-warning);
   font-size: 1.2rem;
   text-align: center;
   margin: 1rem 0;
@@ -427,16 +422,11 @@ function onCounterCancel() {
 }
 
 .muted {
-  color: #6b7280;
+  color: var(--c-text-dimmer);
   text-align: center;
 }
 
-.trade-preview {
-  margin-top: 1rem;
-  padding: 0.5rem;
-  background: #2d3748;
-  border-radius: 4px;
-}
+.trade-preview { margin-top: 1rem; padding: 0.5rem; background: var(--c-surface-2); border-radius: 4px; }
 
 .choice-buttons {
   display: flex;

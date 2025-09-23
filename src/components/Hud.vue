@@ -123,7 +123,7 @@ function isNewlyAwarded(p: Player, a: Animal): boolean {
   80% { background: #f87171; }
   100% { transform: scale(1); background: #fef3f2; }
 }
-.dot { width: 8px; height: 8px; border-radius: 9999px; background: #6b7280; display: inline-block; }
+.dot { width: 8px; height: 8px; border-radius: 9999px; background: var(--c-text-dimmer); display: inline-block; }
 .dot.on { background: var(--c-success); }
 .loglist { margin: 0; padding-left: 18px; color: var(--c-text); }
 .muted { color: var(--c-text-dimmer); font-style: italic; }

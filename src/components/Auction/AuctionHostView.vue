@@ -101,11 +101,11 @@ const buybackDisabledReason = computed<string>(() => {
 
 <style scoped>
 .host-panel {
-  border: 1px solid #4b5563;
+  border: 1px solid var(--c-border);
   border-radius: 12px;
   padding: 12px;
-  background: #1f2937;
-  color: #f9fafb;
+  background: var(--c-surface);
+  color: var(--c-text);
   display: grid;
   row-gap: 10px;
 }
@@ -115,37 +115,21 @@ const buybackDisabledReason = computed<string>(() => {
   justify-content: space-between;
   gap: 8px;
 }
-.host-header h3 {
-  margin: 0;
-  font-size: 16px;
-  color: #ffffff;
-}
-.hint {
-  color: #9ca3af;
-}
-.highest .price {
-  font-size: 14px;
-  margin-bottom: 2px;
-  color: #d1d5db;
-}
+.host-header h3 { margin: 0; font-size: 16px; color: var(--c-text-strong); }
+.hint { color: var(--c-text-dimmer); }
+.highest .price { font-size: 14px; margin-bottom: 2px; color: var(--c-text-muted); }
 .amount {
   font-size: 18px;
-  color: #ffffff;
+  color: var(--c-text-strong);
 }
-.meta {
-  color: #a1a1aa;
-  font-size: 12px;
-}
+.meta { color: var(--c-text-muted); font-size: 12px; }
 .pid {
-  background: #374151;
+  background: var(--c-surface-2);
   padding: 1px 6px;
   border-radius: 6px;
-  color: #f9fafb;
+  color: var(--c-text);
 }
-.no-bid {
-  color: #9ca3af;
-  font-style: italic;
-}
+.no-bid { color: var(--c-text-dimmer); font-style: italic; }
 .actions {
   display: flex;
   gap: 8px;
@@ -154,21 +138,12 @@ const buybackDisabledReason = computed<string>(() => {
 .auction-animal {
   font-size: 14px;
   padding: 6px 8px;
-  background: #374151;
-  border: 1px solid #4b5563;
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-border);
   border-radius: 6px;
-  color: #f9fafb;
+  color: var(--c-text);
 }
-.auction-animal strong {
-  color: #ffffff;
-}
-.rules summary {
-  cursor: pointer;
-  color: #d1d5db;
-}
-.rules ul {
-  margin: 6px 0 0;
-  padding-left: 20px;
-  color: #f9fafb;
-}
+.auction-animal strong { color: var(--c-text-strong); }
+.rules summary { cursor: pointer; color: var(--c-text-muted); }
+.rules ul { margin: 6px 0 0; padding-left: 20px; color: var(--c-text); }
 </style>

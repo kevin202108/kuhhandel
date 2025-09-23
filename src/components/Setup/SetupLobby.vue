@@ -99,14 +99,7 @@ onUnmounted(() => {
   align-items: center;
   margin: 8px 0;
 }
-.players-setup input {
-  flex: 1;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid #2a3b66;
-  background: #0f1630;
-  color: #e7e9ee;
-}
+.players-setup input { flex: 1; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text); }
 
 .setup-actions {
   margin-top: 16px;
@@ -122,14 +115,7 @@ onUnmounted(() => {
   padding: 0;
   margin: 8px 0 0;
 }
-.badge {
-  margin-left: 6px;
-  padding: 2px 6px;
-  border-radius: 9999px;
-  background: #eef2f7;
-  color: #1f2937;
-  font-size: 12px;
-}
+.badge { margin-left: 6px; padding: 2px 6px; border-radius: 9999px; background: var(--c-surface-2); color: var(--c-text); border: 1px solid var(--c-border); font-size: 12px; }
 
 /* Buttons standardized via .ui-btn classes */
 </style>

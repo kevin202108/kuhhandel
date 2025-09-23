@@ -24,7 +24,7 @@ function submit() {
 
 <style scoped>
 .player-row { display: flex; gap: 8px; align-items: center; }
-input { flex: 1; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 8px; }
+input { flex: 1; padding: 8px 10px; border: 1px solid var(--c-border); border-radius: 8px; background: var(--c-surface); color: var(--c-text); }
 /* Buttons standardized via .ui-btn classes */
 .hint { opacity: .75; margin-top: 4px; font-size: 12px; }
 </style>

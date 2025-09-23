@@ -5,7 +5,7 @@
       <h2>Auction: Bidding</h2>
 
       <!-- Auctioneer: Fixed prominent display at top -->
-      <div class="ui-panel auctioneer-info">
+      <div class="ui-panel is-accent">
         <div class="auctioneer-header">
           <strong>{{ nameOf(auctioneerId) }}</strong> <span class="auctioneer-badge">拍賣者</span>
         </div>
@@ -177,34 +177,27 @@ function onToggleMoneyCard(cardId: string) {
   width: 100%;
   max-width: 640px;
 }
-.muted { color: #6b7280; font-size: 12px; }
+.muted { color: var(--c-text-dimmer); font-size: 12px; }
 .compact-host { padding: 8px; }
 
 /* Auctioneer Info Panel */
-.auctioneer-info {
-  background: linear-gradient(135deg, var(--c-accent-800) 0%, var(--c-accent) 100%);
-  border: 2px solid var(--c-accent-border);
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 16px;
-  box-shadow: 0 15px 35px rgba(59, 130, 246, 0.4);
-}
+/* Accent panel now via .ui-panel.is-accent (global) */
 .auctioneer-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
 .auctioneer-badge {
-  background: #f59e0b; color: #1f2937; padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: 800;
+  background: var(--c-warning); color: #1f2937; padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: 800;
   letter-spacing: 1px; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.5); animation: pulse 2s infinite;
 }
 .auction-details { display: flex; gap: 20px; align-items: center; }
 .animal-display, .animal-score, .highest-bid { display: flex; align-items: center; gap: 6px; }
-.label { color: #93c5fd; font-size: 12px; font-weight: 600; }
+.label { color: var(--c-accent-border); font-size: 12px; font-weight: 600; }
 .animal-name, .highest-amount { color: var(--c-text-strong); font-size: 18px; font-weight: 800; }
 .animal-points { color: var(--c-warning); font-size: 18px; font-weight: 800; }
 .highest-bidder-highlight {
   color: #fff; font-size: 16px; font-weight: 700; margin-left: 12px; background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   padding: 4px 12px; border-radius: 8px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4); animation: bounce-in 0.6s ease-out;
 }
-.highest-bidder-highlight strong { color: #ffffff; font-size: 18px; }
-.no-bid { color: #9ca3af; font-size: 14px; font-style: italic; margin-left: 8px; }
+.highest-bidder-highlight strong { color: var(--c-text-strong); font-size: 18px; }
+.no-bid { color: var(--c-text-dimmer); font-size: 14px; font-style: italic; margin-left: 8px; }
 
 @keyframes pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.05);opacity:.8} }
 @keyframes bounce-in { 0%{transform:scale(.8);opacity:0} 50%{transform:scale(1.1);opacity:1} 100%{transform:scale(1);opacity:1} }

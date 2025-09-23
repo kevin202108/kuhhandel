@@ -11,7 +11,7 @@
         :lastAwarded="game.lastAwarded"
       />
     </header>
-    <div v-if="hostChangedMsg" class="banner">{{ hostChangedMsg }}</div>
+    <div v-if="hostChangedMsg" class="ui-banner">{{ hostChangedMsg }}</div>
 
     <!-- Setup / Lobby -->
     <section v-if="phase === 'setup'" class="view setup">
@@ -323,24 +323,10 @@ function onCowCancelled() {
 </script>
 
 <style scoped>
-.app {
-  min-height: 100vh;
-  display: grid;
-  grid-template-rows: auto 1fr;
-  background: #0b1020;
-  color: #e7e9ee;
-}
-.app__header {
-  padding: 12px 16px;
-  border-bottom: 1px solid #24304a;
-  background: #0d1326;
-}
-.view {
-  padding: 16px;
-  max-width: 1080px;
-  margin: 0 auto;
-}
+.app { min-height: 100vh; display: grid; grid-template-rows: auto 1fr; background: var(--c-bg); color: var(--c-text); }
+.app__header { padding: 12px 16px; border-bottom: 1px solid var(--c-border); background: var(--c-surface); }
+.view { padding: 16px; max-width: 1080px; margin: 0 auto; }
 </style>
 
 
-<style scoped>.banner{margin:8px 16px;padding:8px 12px;border-radius:8px;background:#fff3cd;border:1px solid #ffecb5;color:#7a5d00;font-weight:600}</style>
+<!-- Banner styling provided by .ui-banner (global) -->

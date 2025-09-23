@@ -66,30 +66,15 @@ const cowDisabledTooltip = computed(() => {
 </script>
 
 <style scoped>
-.muted { color: #6b7280; font-size: 12px; }
+.muted { color: var(--c-text-dimmer); font-size: 12px; }
 /* Panel styling provided by .ui-panel (global) */
-.turn-choice {
-  display: grid;
-  gap: 12px;
-  padding: 12px;
-  background: #1f2937;
-  color: #f9fafb;
-}
-.title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 700;
-  color: #ffffff;
-}
+.turn-choice { display: grid; gap: 12px; padding: 12px; background: var(--c-surface); color: var(--c-text); }
+.title { margin: 0; font-size: 18px; font-weight: 700; color: var(--c-text-strong); }
 .buttons {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 /* Buttons standardized via .ui-btn classes */
-.hint {
-  color: #9ca3af;
-  font-size: 13px;
-  margin: 0;
-}
+.hint { color: var(--c-text-dimmer); font-size: 13px; margin: 0; }
 </style>
