@@ -197,6 +197,7 @@ export const useAuctionStore = defineStore('auction', {
       }
       game.phase = 'auction.reveal';
       this.syncGameAuction();
+      game.bumpVersion();
     },
 
     hostBuyback() {
@@ -266,6 +267,7 @@ export const useAuctionStore = defineStore('auction', {
       this.auction.reveal = { mode: 'buyback', payerId: auctioneer.id, payeeId: this.auction.highest.playerId, amount: this.auction.highest.total, animal: this.auction.card!.animal };
       game.phase = 'auction.reveal';
       this.syncGameAuction();
+      game.bumpVersion();
     },
 
     // Host-only: settle according to current reveal
