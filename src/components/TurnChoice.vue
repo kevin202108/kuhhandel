@@ -7,7 +7,7 @@
         :disabled="!isMyTurn || !canAuction"
         @click="emit('choose-auction')"
       >
-        Enter Auction
+        發起拍賣(抽卡)
       </button>
 
       <button
@@ -16,7 +16,7 @@
         @click="emit('choose-cow-trade')"
         :title="cowDisabledTooltip"
       >
-        Cow Trade
+        發起幕後交易
       </button>
     </div>
 

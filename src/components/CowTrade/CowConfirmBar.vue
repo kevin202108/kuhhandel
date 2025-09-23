@@ -29,7 +29,7 @@
       >
         確認交易
       </button>
-      <button class="secondary" @click="cancelTrade">清除</button>
+      <button class="secondary" @click="cancelTrade">返回</button>
     </div>
   </div>
 </template>
