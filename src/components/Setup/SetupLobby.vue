@@ -23,8 +23,8 @@
         </li>
       </ul>
       <div class="setup-actions">
-        <button class="secondary" @click="refreshPresence">Refresh</button>
-        <button class="primary" :disabled="!canStartOnline" @click="onStartGame">Start Game (Host)</button>
+        <button class="ui-btn is-secondary" @click="refreshPresence">Refresh</button>
+        <button class="ui-btn is-primary" :disabled="!canStartOnline" @click="onStartGame">Start Game (Host)</button>
       </div>
       <p class="hint">至少需要兩名玩家，由房主開始遊戲。</p>
     </div>
@@ -137,17 +137,6 @@ onUnmounted(() => {
   font-size: 12px;
 }
 
-button {
-  appearance: none;
-  border: 1px solid #35508a;
-  background: #1a2748;
-  color: #e7e9ee;
-  padding: 8px 12px;
-  border-radius: 10px;
-  cursor: pointer;
-}
-button.primary { background: #2a5ad1; border-color: #2a5ad1; }
-button.secondary { background: #203258; }
-button:disabled { opacity: .5; cursor: not-allowed; }
+/* Buttons standardized via .ui-btn classes */
 </style>
 

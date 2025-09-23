@@ -83,13 +83,13 @@
 
         <div class="actions">
           <button
-            class="primary"
+            class="ui-btn is-primary"
             :disabled="selectedMoneyTotal < (game.auction?.highest?.total || 0)"
             @click="emit('confirm-buyback', selectedMoneyIds)"
           >
             確認買回
           </button>
-          <button class="secondary" @click="emit('cancel-buyback')">取消</button>
+          <button class="ui-btn is-secondary" @click="emit('cancel-buyback')">取消</button>
         </div>
       </div>
       <div v-else class="panel compact-host">

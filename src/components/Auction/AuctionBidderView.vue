@@ -26,15 +26,15 @@
       </div> -->
 
       <div class="actions">
-        <button class="secondary" @click="onClear" :disabled="selectedIds.length === 0 || hasPassed">
+        <button class="ui-btn is-secondary" @click="onClear" :disabled="selectedIds.length === 0 || hasPassed">
           清空
         </button>
-        <button class="primary" :disabled="!canConfirm" @click="confirmNow">
+        <button class="ui-btn is-primary" :disabled="!canConfirm" @click="confirmNow">
           確認出價（{{ total }}）
         </button>
         <button
-          class="ghost pass-btn"
-          :class="{ passed: hasPassed }"
+          class="ui-btn pass-btn"
+          :class="hasPassed ? 'is-danger no-dim-when-disabled' : 'is-ghost'"
           :disabled="hasPassed"
           :aria-pressed="hasPassed ? 'true' : 'false'"
           title="放棄後本輪不可再出價"
@@ -114,8 +114,8 @@ function onPass() {
 .bidder {
   display: grid;
   gap: 12px;
-  background: #1f2937;
-  color: #f9fafb;
+  background: var(--c-surface);
+  color: var(--c-text);
   border-radius: 12px;
   padding: 12px;
 }
@@ -127,37 +127,37 @@ function onPass() {
   margin: 0;
   font-size: 16px;
   font-weight: 800;
-  color: #ffffff;
+  color: var(--c-text-strong);
 }
 .highest {
   font-size: 14px;
-  color: #d1d5db;
+  color: var(--c-text-muted);
 }
 .highest.none {
-  color: #9ca3af;
+  color: var(--c-text-dimmer);
 }
 .amount {
   font-variant-numeric: tabular-nums;
   font-weight: 800;
   margin-left: 4px;
-  color: #ffffff;
+  color: var(--c-text-strong);
 }
 .desc {
-  color: #9ca3af;
+  color: var(--c-text-dimmer);
   margin-left: 6px;
 }
 .pad {
-  border: 1px dashed #4b5563;
+  border: 1px dashed var(--c-border);
   border-radius: 12px;
   padding: 10px;
-  background: #374151;
+  background: var(--c-surface-2);
 }
 
 .selection-summary {
   margin-top: 12px;
   padding: 8px 12px;
-  background: linear-gradient(135deg, #065f46 0%, #064e3b 100%);
-  border: 1px solid #10b981;
+  background: linear-gradient(135deg, var(--c-success-surface) 0%, var(--c-success-surface-2) 100%);
+  border: 1px solid var(--c-success);
   border-radius: 8px;
   color: #6ee7b7;
   font-size: 14px;
@@ -173,7 +173,7 @@ function onPass() {
 }
 .you {
   font-weight: 700;
-  color: #f9fafb;
+  color: var(--c-text);
 }
 .actions {
   display: grid;
@@ -181,57 +181,7 @@ function onPass() {
   gap: 8px;
 }
 
-/* Buttons */
-button.primary,
-button.secondary,
-button.ghost {
-  appearance: none;
-  border-radius: 10px;
-  padding: 8px 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: transform 0.05s ease, opacity 0.2s ease, box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-  border: 1px solid transparent;
-  color: #ffffff;
-}
-button.primary {
-  color: #ffffff;
-  background: #155eef;
-  border-color: #155eef;
-}
-button.primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-button.secondary {
-  background: #374151;
-  border-color: #4b5563;
-  color: #f9fafb;
-}
-button.secondary:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-  color: #9ca3af;
-}
-button.ghost {
-  background: transparent;
-  border-color: #4b5563;
-  color: #d1d5db;
-}
-button:not(:disabled):active {
-  transform: translateY(1px);
-}
-
-/* 放棄後的視覺狀態（顯眼） */
-.pass-btn.passed {
-  background: #7f1d1d;       /* 紅色深底 */
-  border-color: #dc2626;
-  color: #fecaca;
-  cursor: not-allowed;
-}
-.pass-btn.passed:disabled {
-  opacity: 1;               /* 保持高對比，不要淡掉 */
-}
+/* Buttons moved to global ui-btn classes in src/assets/main.css */
 
 /* 額外在頂部提示 */
 .banner-passed {
@@ -240,9 +190,9 @@ button:not(:disabled):active {
   border-radius: 8px;
   font-weight: 700;
   font-size: 13px;
-  background: #7f1d1d;
-  border: 1px solid #dc2626;
-  color: #fca5a5;
+  background: var(--c-danger-surface);
+  border: 1px solid var(--c-danger);
+  color: var(--c-danger-contrast);
 }
 
 /* 整卡片淡化但仍可閱讀（可選） */

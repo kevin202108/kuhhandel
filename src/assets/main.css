@@ -1,0 +1,155 @@
+/*
+  Global Theme + Base Styles
+  - Edit variables here to change look & feel app‑wide
+  - Provide shared component classes (buttons/panels/badges)
+*/
+
+/* Theme Tokens */
+:root {
+  /* Palette */
+  --c-bg: #0b1020;
+  --c-surface: #1f2937;      /* dark slate */
+  --c-surface-2: #374151;    /* slightly lighter */
+  --c-border: #4b5563;
+  --c-text: #f9fafb;
+  --c-text-strong: #ffffff;
+  --c-text-muted: #d1d5db;
+  --c-text-dimmer: #9ca3af;
+
+  --c-primary: #155eef;
+  --c-primary-contrast: #ffffff;
+
+  --c-success: #10b981;
+  --c-success-surface: #065f46;
+  --c-success-surface-2: #064e3b;
+
+  --c-danger: #dc2626;
+  --c-danger-surface: #7f1d1d;
+  --c-danger-contrast: #fca5a5;
+
+  --c-warning: #f59e0b;
+  --c-accent: #3b82f6;
+
+  /* Typography */
+  --font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-16: 16px;
+  --fs-18: 18px;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-7: 20px;
+
+  /* Radius */
+  --r-6: 6px;
+  --r-8: 8px;
+  --r-10: 10px;
+  --r-12: 12px;
+  --r-16: 16px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.2);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.3);
+  --shadow-lg: 0 15px 35px rgba(0,0,0,.4);
+
+  /* Motion */
+  --t-fast: 80ms ease;
+  --t-normal: 150ms ease;
+}
+
+/* Optional: light theme overrides */
+[data-theme="light"]:root {
+  --c-bg: #ffffff;
+  --c-surface: #f5f7fb;
+  --c-surface-2: #eef1f7;
+  --c-border: #d4d7df;
+  --c-text: #1e293b;
+  --c-text-strong: #0f172a;
+  --c-text-muted: #475569;
+  --c-text-dimmer: #64748b;
+}
+
+/* Base */
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #app { height: 100%; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Utilities */
+.container { max-width: 1080px; margin: 0 auto; padding: var(--space-6); }
+.muted { color: var(--c-text-dimmer); }
+.text-strong { color: var(--c-text-strong); }
+.text-muted { color: var(--c-text-muted); }
+.surface { background: var(--c-surface); }
+.surface-2 { background: var(--c-surface-2); }
+.rounded-md { border-radius: var(--r-12); }
+.rounded { border-radius: var(--r-10); }
+.shadow-md { box-shadow: var(--shadow-md); }
+.shadow-lg { box-shadow: var(--shadow-lg); }
+
+/* Panels / Cards */
+.ui-panel {
+  background: var(--c-surface);
+  color: var(--c-text);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-12);
+  padding: var(--space-6);
+}
+
+/* Buttons */
+.ui-btn {
+  appearance: none;
+  border-radius: var(--r-10);
+  padding: var(--space-4) var(--space-5);
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
+  color: var(--c-text-strong);
+  transition: transform .05s ease, opacity var(--t-normal), box-shadow var(--t-normal), background var(--t-normal), color var(--t-normal), border-color var(--t-normal);
+}
+.ui-btn:active { transform: translateY(1px); }
+.ui-btn:disabled { opacity: .55; cursor: not-allowed; }
+.ui-btn.no-dim-when-disabled:disabled { opacity: 1; }
+.ui-btn.is-primary { background: var(--c-primary); border-color: var(--c-primary); color: var(--c-primary-contrast); }
+.ui-btn.is-secondary { background: var(--c-surface-2); border-color: var(--c-border); color: var(--c-text); }
+.ui-btn.is-ghost { background: transparent; border-color: var(--c-border); color: var(--c-text-muted); }
+.ui-btn.is-danger { background: var(--c-danger-surface); border-color: var(--c-danger); color: var(--c-danger-contrast); }
+
+/* Badges / Banners */
+.ui-badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: var(--fs-12); font-weight: 800; }
+.ui-badge.is-warning { background: var(--c-warning); color: #1f2937; }
+
+.ui-banner {
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--r-8);
+  border: 1px solid var(--c-border);
+  background: var(--c-surface-2);
+  color: var(--c-text);
+}
+
+/* Helpful component styles */
+.ui-selection-summary {
+  margin-top: var(--space-5);
+  padding: var(--space-3) var(--space-5);
+  background: linear-gradient(135deg, var(--c-success-surface) 0%, var(--c-success-surface-2) 100%);
+  border: 1px solid var(--c-success);
+  border-radius: var(--r-8);
+  color: #6ee7b7;
+  font-size: var(--fs-14);
+  font-weight: 600;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}

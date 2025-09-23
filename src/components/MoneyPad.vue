@@ -69,22 +69,22 @@ function shortId(id: string) {
   gap: 8px;
 }
 .card {
-  border: 1px solid #4b5563;
+  border: 1px solid var(--c-border);
   border-radius: 10px;
-  background: #374151;
+  background: var(--c-surface-2);
   padding: 10px 8px;
   cursor: pointer;
   display: grid;
   gap: 4px;
   text-align: center;
   transition: box-shadow 0.15s ease, transform 0.05s ease, border-color 0.15s ease;
-  color: #f9fafb;
+  color: var(--c-text);
 }
 .card .value {
   font-size: 18px;
   font-weight: 800;
   letter-spacing: 0.2px;
-  color: #ffffff;
+  color: var(--c-text-strong);
 }
 /* .card.zero .value {
   color: #64748b;
@@ -94,8 +94,8 @@ function shortId(id: string) {
   font-size: 11px;
 }
 .card.selected {
-  border-color: #10b981;
-  box-shadow: 0 0 0 4px #10b98140 inset;
+  border-color: var(--c-success);
+  box-shadow: 0 0 0 4px #10b98140 inset; /* uses success w/ alpha */
   background: linear-gradient(135deg, #10b98140 0%, #14b8a640 100%);
   transform: scale(1.05);
   border-width: 2px;

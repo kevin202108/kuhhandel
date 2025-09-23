@@ -24,13 +24,13 @@
     </div>
     <div class="actions">
       <button
-        class="primary"
+        class="ui-btn is-primary"
         :disabled="!selectedAnimal"
         @click="confirmSelection"
       >
         確認選擇
       </button>
-      <button class="secondary" @click="cancelSelection">返回</button>
+      <button class="ui-btn is-secondary" @click="cancelSelection">返回</button>
     </div>
   </div>
 </template>
@@ -210,33 +210,5 @@ const cancelSelection = () => {
   margin-top: 20px;
 }
 
-button {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-button.primary {
-  background: #10b981;
-  color: white;
-}
-
-button.primary:disabled {
-  background: #6b7280;
-  cursor: not-allowed;
-}
-
-button.secondary {
-  background: #374151;
-  color: #f9fafb;
-  border: 1px solid #4b5563;
-}
-
-button:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
+/* Buttons standardized via .ui-btn classes */
 </style>

@@ -8,7 +8,7 @@
         </li>
       </ol>
       <div class="actions">
-        <button class="secondary" @click="emit('restart')">Restart</button>
+        <button class="ui-btn is-secondary" @click="emit('restart')">Restart</button>
       </div>
     </div>
   </section>
@@ -44,19 +44,9 @@ function nameOf(id: string) {
   gap: 10px;
   flex-wrap: wrap;
 }
-button {
-  appearance: none;
-  border: 1px solid #35508a;
-  background: #1a2748;
-  color: #e7e9ee;
-  padding: 8px 12px;
-  border-radius: 10px;
-  cursor: pointer;
-}
-button.secondary { background: #203258; }
+/* Buttons standardized via .ui-btn classes */
 .scores {
   margin: 8px 0 0;
   padding: 0 0 0 18px;
 }
 </style>
-

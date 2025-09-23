@@ -7,7 +7,7 @@
           <h2 class="title">Choose your action</h2>
           <div class="buttons">
             <button
-              class="btn primary"
+              class="ui-btn is-primary"
               :disabled="!isMyTurn || !canAuction"
               @click="emit('choose-auction')"
             >
@@ -15,7 +15,7 @@
             </button>
 
             <button
-              class="btn"
+              class="ui-btn is-secondary"
               :disabled="!isMyTurn || isFirstRound || !canCowTrade"
               @click="emit('choose-cow-trade')"
               :title="cowDisabledTooltip"
@@ -92,33 +92,10 @@ const cowDisabledTooltip = computed(() => {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
-.btn {
-  appearance: none;
-  border: 1px solid #4b5563;
-  border-radius: 10px;
-  background: #374151;
-  padding: 12px 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.05s ease, box-shadow 0.15s ease, opacity 0.2s ease, color 0.15s ease, border-color 0.15s ease;
-  color: #f9fafb;
-}
-.btn.primary {
-  border-color: #155eef;
-  background: #165dff30;
-  color: #ffffff;
-}
-.btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-.btn:not(:disabled):active {
-  transform: translateY(1px);
-}
+/* Buttons standardized via .ui-btn classes */
 .hint {
   color: #9ca3af;
   font-size: 13px;
   margin: 0;
 }
 </style>
-

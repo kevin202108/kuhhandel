@@ -28,7 +28,7 @@
     <div class="actions">
       <button
         data-testid="btn-award"
-        class="btn primary"
+        class="ui-btn is-primary"
         type="button"
         @click="onAward"
       >
@@ -37,7 +37,7 @@
 
       <button
         data-testid="btn-buyback"
-        class="btn"
+        class="ui-btn is-secondary"
         type="button"
         :disabled="!canBuyback || !highest"
         @click="onBuyback"
@@ -150,24 +150,7 @@ const buybackDisabledReason = computed<string>(() => {
   display: flex;
   gap: 8px;
 }
-.btn {
-  padding: 8px 12px;
-  border-radius: 10px;
-  border: 1px solid #4b5563;
-  background: #374151;
-  cursor: pointer;
-  font-size: 14px;
-  color: #f9fafb;
-}
-.btn[disabled] {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.primary {
-  background: #2563eb;
-  border-color: #2563eb;
-  color: white;
-}
+/* Buttons standardized via .ui-btn classes in src/assets/main.css */
 .auction-animal {
   font-size: 14px;
   padding: 6px 8px;
