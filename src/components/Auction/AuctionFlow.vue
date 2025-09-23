@@ -96,6 +96,39 @@
         <div class="muted">Waiting for auctioneer to select money for buyback…</div>
       </div>
     </section>
+
+    <!-- Auction: Reveal (all players) -->
+    <section v-else-if="phase === 'auction.reveal'" class="view auction auction-reveal">
+      <h2>Auction: Result</h2>
+      <div class="ui-panel">
+        <div class="reveal-info">
+          <p><strong>動物：</strong>{{ auctionAnimalName }}</p>
+          <template v-if="game.auction?.reveal?.mode === 'award'">
+            <p>
+              <strong>{{ nameOf(game.auction?.reveal?.payerId || '') }}</strong>
+              支付 <strong>{{ game.auction?.reveal?.amount }}</strong>
+              給 <strong>{{ nameOf(game.auction?.reveal?.payeeId || '') }}</strong>
+              ，取得 <strong>{{ auctionAnimalName }}</strong>
+            </p>
+          </template>
+          <template v-else-if="game.auction?.reveal?.mode === 'buyback'">
+            <p>
+              拍賣者 <strong>{{ nameOf(auctioneerId) }}</strong>
+              支付 <strong>{{ game.auction?.reveal?.amount }}</strong>
+              給 <strong>{{ nameOf(game.auction?.reveal?.payeeId || '') }}</strong>
+              ，買回 <strong>{{ auctionAnimalName }}</strong>
+            </p>
+          </template>
+          <template v-else>
+            <p>無人出價，拍賣者 <strong>{{ nameOf(auctioneerId) }}</strong> 取得 <strong>{{ auctionAnimalName }}</strong></p>
+          </template>
+
+          <div v-if="isHost" class="actions">
+            <button class="ui-btn is-primary" @click="emit('reveal-continue')">繼續</button>
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -117,6 +150,7 @@ const emit = defineEmits<{
   buyback: [];
   'confirm-buyback': [moneyCardIds: string[]];
   'cancel-buyback': [];
+  'reveal-continue': [];
 }>();
 
 const game = useGameStore();
@@ -127,6 +161,7 @@ const myPlayer = computed<Player | undefined>(() => players.value.find(p => p.id
 const myId = ((globalThis as any).__PLAYER__ as string) || (sessionStorage.getItem('playerId') || '');
 const auctioneerId = computed(() => auction.auction?.auctioneerId ?? game.turnOwnerId);
 const canBuyback = computed(() => auction.canAuctioneerBuyback);
+const isHost = computed(() => game.hostId === myId);
 
 const auctionAnimalName = computed(() => {
   const animal = game.auction?.card?.animal;
@@ -179,6 +214,7 @@ function onToggleMoneyCard(cardId: string) {
 }
 .muted { color: var(--c-text-dimmer); font-size: 12px; }
 .compact-host { padding: 8px; }
+.auction-reveal .actions { margin-top: 12px; text-align: center; }
 
 /* Auctioneer Info Panel */
 /* Accent panel now via .ui-panel.is-accent (global) */

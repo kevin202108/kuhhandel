@@ -187,7 +187,16 @@ export const useAuctionStore = defineStore('auction', {
       if (!this.auction || game.phase !== 'auction.closing') return;
       this.auction.closed = true;
       this.syncGameAuction();
-      this.settle('award');
+      // reveal then settle on host continue
+      const a = this.auction;
+      const animal = a.card?.animal!;
+      if (a.highest) {
+        a.reveal = { mode: 'award', payerId: a.highest.playerId, payeeId: a.auctioneerId, amount: a.highest.total, animal };
+      } else {
+        a.reveal = { mode: 'no-bid', animal };
+      }
+      game.phase = 'auction.reveal';
+      this.syncGameAuction();
     },
 
     hostBuyback() {
@@ -252,9 +261,24 @@ export const useAuctionStore = defineStore('auction', {
         return;
       }
 
-      console.log('[DEBUG] confirmBuyback: Executing buyback transaction');
-      // 執行買回邏輯
-      this.settle('buyback', moneyCardIds);
+      console.log('[DEBUG] confirmBuyback: Prepare buyback reveal');
+      this.auction.buybackSelectedCardIds = moneyCardIds.slice();
+      this.auction.reveal = { mode: 'buyback', payerId: auctioneer.id, payeeId: this.auction.highest.playerId, amount: this.auction.highest.total, animal: this.auction.card!.animal };
+      game.phase = 'auction.reveal';
+      this.syncGameAuction();
+    },
+
+    // Host-only: settle according to current reveal
+    settleFromReveal() {
+      const game = useGameStore();
+      if (!this.auction || game.phase !== 'auction.reveal') return;
+      const a = this.auction;
+      if (!a.card) return;
+      if (a.reveal?.mode === 'buyback') {
+        this.settle('buyback', a.buybackSelectedCardIds);
+        return;
+      }
+      this.settle('award');
     },
 
     settle(mode: 'award' | 'buyback', moneyCardIds?: string[]) {
@@ -330,3 +354,5 @@ export const useAuctionStore = defineStore('auction', {
     },
   },
 });
+
+

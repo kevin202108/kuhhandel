@@ -35,6 +35,7 @@
       @buyback="onHostBuyback"
       @confirm-buyback="onConfirmBuyback"
       @cancel-buyback="onCancelBuyback"
+      @reveal-continue="onAuctionRevealContinue"
     />
 
     <!-- 牛交易階段 -->
@@ -187,6 +188,14 @@ function onConfirmBuyback(moneyCardIds: string[]) {
 
 function onCancelBuyback() {
   void broadcast.publish(Msg.Action.CancelBuyback, { playerId: myId });
+}
+
+function onAuctionRevealContinue() {
+  console.log('[DEBUG] onAuctionRevealContinue called', {
+    currentPhase: game.phase,
+    myId
+  });
+  void broadcast.publish(Msg.Action.ProceedAuctionReveal, { playerId: myId }, { actionId: newId() });
 }
 
 // Cow Trade event handlers

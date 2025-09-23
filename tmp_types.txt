@@ -36,16 +36,6 @@ export interface AuctionState {
   highest?: Bid;            // 僅保留當前最高（同額比 ts）
   passes: string[];         // **JSON 可序列化**（由 Set 改為 string[]）
   closed: boolean;
-  // 公開揭曉資訊，供 auction.reveal 畫面使用
-  reveal?: {
-    mode: 'award' | 'buyback' | 'no-bid';
-    payerId?: string;
-    payeeId?: string;
-    amount?: number;
-    animal: Animal;
-  };
-  // 買回用：主持人所選的金錢卡 id（結算時需要）
-  buybackSelectedCardIds?: string[];
 }
 
 export interface CowTradeState {
@@ -90,3 +80,4 @@ export interface Rules {
   ANIMAL_SCORES: Record<Animal, number>;
   ANIMAL_NAMES: Record<Animal, string>;
 }
+

@@ -398,6 +398,15 @@ void (async function bootstrapPhase2() {
         cow.cancelCounter();
       });
 
+      // Proceed auction reveal -> settle
+      const offProceedAuctionReveal = broadcast.subscribe(Msg.Action.ProceedAuctionReveal, (env) => {
+        if (!accept(env.type, env.senderId, env.actionId, env.ts)) return;
+        const { playerId } = env.payload as { playerId: string };
+        if (game.phase !== 'auction.reveal' || env.senderId !== playerId || playerId !== game.hostId) return;
+        console.log('[DEBUG] Host processing ProceedAuctionReveal', { playerId });
+        auction.settleFromReveal();
+      });
+
       const offProceedCowReveal = broadcast.subscribe(Msg.Action.ProceedCowReveal, (env) => {
         if (!accept(env.type, env.senderId, env.actionId, env.ts)) return;
         const { playerId } = env.payload as { playerId: string };
