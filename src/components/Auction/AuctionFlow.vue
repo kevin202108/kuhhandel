@@ -31,6 +31,7 @@
           class="auction-col"
         >
           <AuctionBidderView
+            :key="game.auction?.card?.id || bidderHighlightKey"
             :self="myPlayer"
             :highest="game.auction?.highest"
             :nameOf="nameOf"

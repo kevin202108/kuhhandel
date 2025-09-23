@@ -141,7 +141,18 @@ export const useAuctionStore = defineStore('auction', {
       if (this.auction.passes.includes(playerId)) return;
 
       const bidder = getPlayerById(game.$state, playerId);
-      const total = moneyTotalOf(bidder, moneyCardIds);
+      let total = 0;
+      try {
+        total = moneyTotalOf(bidder, moneyCardIds);
+      } catch (err) {
+        console.warn('[AUCTION] Ignoring invalid bid: money cards mismatch', {
+          playerId,
+          moneyCardIds,
+          bidderHas: bidder.moneyCards.map(m => m.id),
+          error: String(err)
+        });
+        return; // drop invalid bid silently (client likely stale)
+      }
 
       const newBid: Bid = {
         playerId,

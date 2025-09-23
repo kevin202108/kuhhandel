@@ -49,7 +49,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import MoneyPad from '../MoneyPad.vue';
 import type { Player, Bid } from '@/types/game';
 
@@ -108,6 +108,15 @@ function onPass() {
   selectedIds.value = [];     // 清掉暫存
   emit('pass');               // 通知父層 / store
 }
+
+// 保護：當手牌變動（例如結算或快照刷新）時，移除已不存在的選擇，避免送出失效的卡片 id
+watch(
+  () => props.self.moneyCards.map(c => c.id).join(','),
+  () => {
+    const idSet = new Set(props.self.moneyCards.map(c => c.id));
+    selectedIds.value = selectedIds.value.filter(id => idSet.has(id));
+  }
+);
 </script>
 
 <style scoped>
