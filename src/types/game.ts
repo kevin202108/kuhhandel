@@ -47,6 +47,12 @@ export interface CowTradeState {
   initiatorCardCount?: number;
   targetCardCount?: number;
   revealWinner?: 'initiator' | 'target' | 'tie';
+  // 公開的雙方出價總額（只在 reveal 階段填入；UI 僅讓參與者可見）
+  revealInitiatorTotal?: number;
+  revealTargetTotal?: number;
+  // 本機端（client-only）暫存，避免快照競速造成參與者看不到自身出價
+  myInitiatorSecretLocal?: string[];
+  myTargetSecretLocal?: string[];
 }
 
 export interface GameState {

@@ -289,13 +289,28 @@ const tradeAmount = computed(() => cow.tradeAmount)
 
 // 出價資訊計算
 const initiatorBid = computed(() => {
-  if (!cow.initiatorSecret) return '?'
-  const player = game.players.find(p => p.id === cow.initiatorId)
-  if (!player) return '?'
-  return cow.initiatorSecret.reduce((sum, id) => {
-    const card = player.moneyCards.find(c => c.id === id)
-    return sum + (card?.value || 0)
-  }, 0)
+  // Host 公開的揭曉總額（reveal 階段）
+  const publicTotal = game.cow?.revealInitiatorTotal
+  if (typeof publicTotal === 'number') return publicTotal
+  // Host 端可見 initiatorSecret
+  if (cow.initiatorSecret) {
+    const player = game.players.find(p => p.id === cow.initiatorId)
+    if (!player) return '?'
+    return cow.initiatorSecret.reduce((sum, id) => {
+      const card = player.moneyCards.find(c => c.id === id)
+      return sum + (card?.value || 0)
+    }, 0)
+  }
+  // 參與者（發起者）本機暫存的出價（避免快照延遲）
+  if (isInitiator.value && cow.myInitiatorSecretLocal) {
+    const player = game.players.find(p => p.id === cow.initiatorId)
+    if (!player) return '?'
+    return cow.myInitiatorSecretLocal.reduce((sum, id) => {
+      const card = player.moneyCards.find(c => c.id === id)
+      return sum + (card?.value || 0)
+    }, 0)
+  }
+  return '?'
 })
 
 const initiatorCardCount = computed(() => {
@@ -303,13 +318,26 @@ const initiatorCardCount = computed(() => {
 })
 
 const targetBid = computed(() => {
-  if (!cow.targetSecret) return '?'
-  const player = game.players.find(p => p.id === cow.targetPlayerId)
-  if (!player) return '?'
-  return cow.targetSecret.reduce((sum, id) => {
-    const card = player.moneyCards.find(c => c.id === id)
-    return sum + (card?.value || 0)
-  }, 0)
+  // Host 公開的揭曉總額（reveal 階段）
+  const publicTotal = game.cow?.revealTargetTotal
+  if (typeof publicTotal === 'number') return publicTotal
+  if (cow.targetSecret) {
+    const player = game.players.find(p => p.id === cow.targetPlayerId)
+    if (!player) return '?'
+    return cow.targetSecret.reduce((sum, id) => {
+      const card = player.moneyCards.find(c => c.id === id)
+      return sum + (card?.value || 0)
+    }, 0)
+  }
+  if (isTarget.value && cow.myTargetSecretLocal) {
+    const player = game.players.find(p => p.id === cow.targetPlayerId)
+    if (!player) return '?'
+    return cow.myTargetSecretLocal.reduce((sum, id) => {
+      const card = player.moneyCards.find(c => c.id === id)
+      return sum + (card?.value || 0)
+    }, 0)
+  }
+  return '?'
 })
 
 const targetCardCount = computed(() => {

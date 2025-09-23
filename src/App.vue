@@ -233,6 +233,8 @@ function onCowConfirm(moneyCardIds: string[]) {
   const moneyCardIds_local = moneyCardIds; // needed for closure
 
   if (useCowStore().initiatorId === myId) {
+    // 本機暫存發起者出價，避免 reveal 快照競速
+    useCowStore().myInitiatorSecretLocal = moneyCardIds_local;
     void broadcast.publish(Msg.Action.CommitCowTrade, {
       playerId: myId_local,
       moneyCardIds: moneyCardIds_local
@@ -284,6 +286,8 @@ function onCowCounterConfirm(moneyCardIds: string[]) {
 
   const myId_local = myId;
   const moneyCardIds_local = moneyCardIds;
+  // 本機暫存目標玩家出價，避免 reveal 快照競速
+  useCowStore().myTargetSecretLocal = moneyCardIds_local;
   void broadcast.publish(Msg.Action.CommitCowCounter, {
     playerId: myId_local,
     moneyCardIds: moneyCardIds_local

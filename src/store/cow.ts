@@ -35,6 +35,10 @@ export const useCowStore = defineStore('cow', {
     initiatorCardCount: undefined,
     targetCardCount: undefined,
     revealWinner: undefined,
+    revealInitiatorTotal: undefined,
+    revealTargetTotal: undefined,
+    myInitiatorSecretLocal: undefined,
+    myTargetSecretLocal: undefined,
   }),
 
   getters: {
@@ -124,6 +128,8 @@ export const useCowStore = defineStore('cow', {
         initiatorCardCount: this.initiatorCardCount,
         targetCardCount: this.targetCardCount,
         revealWinner: this.revealWinner,
+        revealInitiatorTotal: this.revealInitiatorTotal,
+        revealTargetTotal: this.revealTargetTotal,
         // 注意：secret 不應該同步到所有玩家，只在 host 端記憶
       };
       // 強制觸發 game store 的更新以廣播狀態變化
@@ -135,6 +141,8 @@ export const useCowStore = defineStore('cow', {
         initiatorCardCount: this.initiatorCardCount,
         targetCardCount: this.targetCardCount,
         revealWinner: this.revealWinner,
+        revealInitiatorTotal: this.revealInitiatorTotal,
+        revealTargetTotal: this.revealTargetTotal,
         gamePhase: game.phase,
         cowState: (game as any).cow
       });
@@ -184,6 +192,14 @@ export const useCowStore = defineStore('cow', {
       // 發起者贏得交易，目標不付錢
       game.phase = 'cow.reveal';
       this.revealWinner = 'initiator';
+      try {
+        const initiator = getPlayerById(game.$state, this.initiatorId!);
+        this.revealInitiatorTotal = this.initiatorSecret ? moneyTotalOf(initiator, this.initiatorSecret) : undefined;
+        this.revealTargetTotal = 0;
+      } catch {
+        this.revealInitiatorTotal = undefined;
+        this.revealTargetTotal = undefined;
+      }
       this.syncGameCow();
     },
 
@@ -210,6 +226,8 @@ export const useCowStore = defineStore('cow', {
         const target = getPlayerById(game.$state, this.targetPlayerId!);
         const initTotal = moneyTotalOf(initiator, this.initiatorSecret!);
         const targTotal = moneyTotalOf(target, this.targetSecret!);
+        this.revealInitiatorTotal = initTotal;
+        this.revealTargetTotal = targTotal;
         this.revealWinner = initTotal > targTotal ? 'initiator' : (targTotal > initTotal ? 'target' : 'tie');
       } catch {
         this.revealWinner = undefined;
@@ -359,6 +377,14 @@ export const useCowStore = defineStore('cow', {
       this.initiatorCardCount = undefined;
       this.targetCardCount = undefined;
       this.revealWinner = undefined;
+      this.revealInitiatorTotal = undefined;
+      this.revealTargetTotal = undefined;
+      this.myInitiatorSecretLocal = undefined;
+      this.myTargetSecretLocal = undefined;
     },
   },
 });
+
+
+
+
