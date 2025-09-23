@@ -35,7 +35,7 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue';
-import SetupForm from '@/components/SetupForm.vue';
+import SetupForm from '@/components/Setup/SetupForm.vue';
 import { useGameStore } from '@/store/game';
 import broadcast from '@/services/broadcast';
 

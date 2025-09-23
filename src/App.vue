@@ -19,7 +19,7 @@
     </section>
 
     <!-- Turn Choice -->
-    <TurnChoiceView
+    <TurnChoice
       v-else-if="phase === 'turn.choice'"
       @choose-auction="onChooseAuction"
       @choose-cow-trade="onChooseCowTrade"
@@ -68,7 +68,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import Hud from '@/components/Hud.vue';
-import TurnChoiceView from '@/components/TurnChoice/TurnChoiceView.vue';
+import TurnChoice from '@/components/TurnChoice/TurnChoice.vue';
 import AuctionFlow from '@/components/Auction/AuctionFlow.vue';
 import CowTrade from '@/components/CowTrade/CowTrade.vue';
 import SetupLobby from '@/components/Setup/SetupLobby.vue';
