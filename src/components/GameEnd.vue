@@ -1,6 +1,6 @@
 <template>
   <section class="view game-end">
-    <div class="panel">
+    <div class="ui-panel">
       <h2>Game Over</h2>
       <ol class="scores">
         <li v-for="s in finalScores" :key="s.playerId">
@@ -31,13 +31,7 @@ function nameOf(id: string) {
 </script>
 
 <style scoped>
-.panel {
-  background: #121a33;
-  border: 1px solid #223055;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.25);
-}
+/* Panel styling provided by .ui-panel (global) */
 .actions {
   margin-top: 16px;
   display: flex;

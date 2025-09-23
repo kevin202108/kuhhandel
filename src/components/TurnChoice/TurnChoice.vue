@@ -1,6 +1,6 @@
 <template>
   <section class="view turn-choice">
-    <div class="panel">
+    <div class="ui-panel">
       <h2>Choose Action ({{ activePlayer?.name }})</h2>
       <div v-if="isMyTurn">
         <div class="turn-choice">
@@ -67,13 +67,7 @@ const cowDisabledTooltip = computed(() => {
 
 <style scoped>
 .muted { color: #6b7280; font-size: 12px; }
-.panel {
-  background: #121a33;
-  border: 1px solid #223055;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.25);
-}
+/* Panel styling provided by .ui-panel (global) */
 .turn-choice {
   display: grid;
   gap: 12px;

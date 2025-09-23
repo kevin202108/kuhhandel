@@ -5,7 +5,7 @@
       <h2>🐄 牛交易：選擇對象</h2>
 
       <!-- 發起者視角 -->
-      <div v-if="isInitiator" class="panel">
+      <div v-if="isInitiator" class="ui-panel">
         <p>選擇你想要交易的玩家：</p>
         <CowTargetPicker
           @target-selected="onTargetSelected"
@@ -14,7 +14,7 @@
       </div>
 
       <!-- 其他玩家視角 -->
-      <div v-else class="panel waiting">
+      <div v-else class="ui-panel waiting">
         <div class="muted">
           <p>{{ initiatorName }} 正在選擇交易對象...</p>
           <div class="spinner"></div>
@@ -27,7 +27,7 @@
       <h2>🐄 牛交易：選擇動物</h2>
 
       <!-- 發起者視角 -->
-      <div v-if="isInitiator" class="panel">
+      <div v-if="isInitiator" class="ui-panel">
         <p>與 {{ targetName }} 交易哪種動物？</p>
         <CowAnimalPicker
           @animal-selected="onAnimalSelected"
@@ -36,7 +36,7 @@
       </div>
 
       <!-- 目標玩家視角 -->
-      <div v-else-if="isTarget" class="panel waiting">
+      <div v-else-if="isTarget" class="ui-panel waiting">
         <div class="muted">
           <p>{{ initiatorName }} 正在選擇要交易的動物...</p>
           <div class="trade-preview">
@@ -46,7 +46,7 @@
       </div>
 
       <!-- 其他玩家視角 -->
-      <div v-else class="panel waiting">
+      <div v-else class="ui-panel waiting">
         <div class="muted">
           <p>{{ initiatorName }} 正在與 {{ targetName }} 選擇交易動物...</p>
         </div>
@@ -58,7 +58,7 @@
       <h2>🐄 牛交易：秘密出價</h2>
 
       <!-- 發起者視角 -->
-      <div v-if="isInitiator" class="panel">
+      <div v-if="isInitiator" class="ui-panel">
         <div class="trade-info">
           <p><strong>交易動物：</strong>{{ tradeAnimal }}</p>
           <p><strong>交易數量：</strong>{{ tradeAmount }} 隻</p>
@@ -107,7 +107,7 @@
         </div>
       </div>
 
-      <div v-else-if="isTarget" class="panel">
+      <div v-else-if="isTarget" class="ui-panel">
         <div class="trade-info">
           <p><strong>交易動物：</strong>{{ tradeAnimal }}</p>
           <p><strong>交易數量：</strong>{{ tradeAmount }} 隻</p>
@@ -119,7 +119,7 @@
         </div>
       </div>
 
-      <div v-else class="panel waiting">
+      <div v-else class="ui-panel waiting">
         <div class="muted">
           <p>{{ targetName }} 正在決定是否接受 {{ initiatorName }} 的出價...</p>
         </div>
@@ -130,7 +130,7 @@
     <section v-else-if="phase === 'cow.selectMoney'" class="view cow-trade">
       <h2>🐄 牛交易：回價</h2>
 
-      <div v-if="isInitiator" class="panel waiting">
+      <div v-if="isInitiator" class="ui-panel waiting">
         <div class="muted">
           <p>{{ targetName }} 正在提出回價...</p>
           <div class="bid-info">
@@ -139,7 +139,7 @@
         </div>
       </div>
 
-      <div v-else-if="isTarget" class="panel">
+      <div v-else-if="isTarget" class="ui-panel">
         <div class="trade-info">
           <p><strong>交易動物：</strong>{{ tradeAnimal }}</p>
           <p><strong>交易數量：</strong>{{ tradeAmount }} 隻</p>
@@ -152,7 +152,7 @@
         />
       </div>
 
-      <div v-else class="panel waiting">
+      <div v-else class="ui-panel waiting">
         <div class="muted">
           <p>{{ targetName }} 正在向 {{ initiatorName }} 提出回價...</p>
         </div>
@@ -162,7 +162,7 @@
     <!-- 階段 6: 結果揭曉 (所有人可見) -->
     <section v-else-if="phase === 'cow.reveal'" class="view cow-trade">
       <h2>🐄 牛交易：結果揭曉</h2>
-      <div class="panel">
+      <div class="ui-panel">
         <div class="reveal-info">
           <p><strong>交易動物：</strong>{{ tradeAnimal }}</p>
           <p><strong>交易數量：</strong>{{ tradeAmount }} 隻</p>
@@ -195,7 +195,7 @@
     <!-- 階段 5: 結算 (所有人可見) -->
     <section v-else-if="phase === 'cow.settlement'" class="view cow-trade">
       <h2>🐄 牛交易：結算完成</h2>
-      <div class="panel">
+      <div class="ui-panel">
         <div class="muted">交易已完成，遊戲繼續...</div>
       </div>
     </section>
@@ -365,13 +365,7 @@ function onCounterCancel() {
   margin-bottom: 16px;
 }
 
-.panel {
-  background: #121a33;
-  border: 1px solid #223055;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.25);
-}
+/* Panel styling provided by .ui-panel (global) */
 
 .waiting {
   text-align: center;

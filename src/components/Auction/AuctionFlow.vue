@@ -5,7 +5,7 @@
       <h2>Auction: Bidding</h2>
 
       <!-- Auctioneer: Fixed prominent display at top -->
-      <div class="panel auctioneer-info">
+      <div class="ui-panel auctioneer-info">
         <div class="auctioneer-header">
           <strong>{{ nameOf(auctioneerId) }}</strong> <span class="auctioneer-badge">拍賣者</span>
         </div>
@@ -44,7 +44,7 @@
     <!-- Auction: Closing -->
     <section v-else-if="phase === 'auction.closing'" class="view auction">
       <h2>Auction: Closing</h2>
-      <div v-if="myId === auctioneerId" class="panel">
+      <div v-if="myId === auctioneerId" class="ui-panel">
         <AuctionHostView
           :highest="game.auction?.highest"
           :canBuyback="canBuyback"
@@ -52,7 +52,7 @@
           @buyback="() => emit('buyback')"
         />
       </div>
-      <div v-else class="panel compact-host">
+      <div v-else class="ui-panel compact-host">
         <div class="muted">Waiting for host to settle…</div>
         <div>
           Highest: <strong>{{ game.auction?.highest?.total ?? 0 }}</strong>
@@ -66,7 +66,7 @@
     <!-- Auction: Buyback Money Selection -->
     <section v-else-if="phase === 'auction.buyback'" class="view auction">
       <h2>Auction: Buyback</h2>
-      <div v-if="myId === auctioneerId" class="panel">
+      <div v-if="myId === auctioneerId" class="ui-panel">
         <div class="buyback-info">
           <p>選擇金錢卡支付 {{ game.auction?.highest?.total }} 以買回 {{ game.auction?.card?.animal }}</p>
           <div class="selected-total">
@@ -92,7 +92,7 @@
           <button class="ui-btn is-secondary" @click="emit('cancel-buyback')">取消</button>
         </div>
       </div>
-      <div v-else class="panel compact-host">
+      <div v-else class="ui-panel compact-host">
         <div class="muted">Waiting for auctioneer to select money for buyback…</div>
       </div>
     </section>

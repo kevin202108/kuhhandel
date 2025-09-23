@@ -3,7 +3,7 @@
     <h1>幕後交易 KUHHANDEL</h1>
 
     <!-- NameEntry when displayName is not set -->
-    <div v-if="!hasDisplayName" class="panel">
+    <div v-if="!hasDisplayName" class="ui-panel">
       <h2>Enter Your Display Name</h2>
       <div class="players-setup">
         <SetupForm @confirm="onNameConfirm" />
@@ -12,7 +12,7 @@
     </div>
 
     <!-- Lobby when already joined -->
-    <div v-else class="panel">
+    <div v-else class="ui-panel">
       <h2>大廳 (房間: {{ roomId }})</h2>
       <p class="hint">房主: <code>{{ hostIdLabel }}</code></p>
       <ul class="plist">
@@ -91,13 +91,7 @@ onUnmounted(() => {
 <style scoped>
 .setup-lobby { padding: 16px; }
 
-.panel {
-  background: #121a33;
-  border: 1px solid #223055;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.25);
-}
+/* Panel styling provided by .ui-panel (global) */
 
 .players-setup .player-row {
   display: flex;
