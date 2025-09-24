@@ -51,7 +51,12 @@ const PLAYER = ensurePlayerId();
 
 // Utility: read roomId/displayName from session
 function readRoomId(): string {
-  try { return (sessionStorage.getItem('roomId') || '').slice(0, 12); } catch { return ''; }
+  try {
+    const fromSession = (sessionStorage.getItem('roomId') || '').slice(0, 24);
+    const fromUrl = (url.searchParams.get('room') || 'dev').toLowerCase().trim();
+    const raw = fromSession || fromUrl;
+    return raw.replace(/[^a-z0-9_-]/g, '').slice(0, 24) || 'dev';
+  } catch { return 'dev'; }
 }
 
 // ---- ?? Vue

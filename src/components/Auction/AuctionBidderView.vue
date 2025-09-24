@@ -57,6 +57,7 @@ const props = defineProps<{
   self: Player;
   highest?: Bid;
   auctionAnimal?: string;
+  synced?: boolean; // 外部指示：狀態已同步（避免初次載入時過早互動）
 }>();
 
 const emit = defineEmits<{
@@ -77,7 +78,7 @@ const total = computed(() =>
 );
 
 // 放棄後禁用出價，且必須選擇至少一張錢卡
-const canConfirm = computed(() => !hasPassed.value && selectedIds.value.length > 0);
+const canConfirm = computed(() => !hasPassed.value && selectedIds.value.length > 0 && (props.synced ?? true));
 
 function onToggle(id: string) {
   if (hasPassed.value) return; // 放棄後忽略互動

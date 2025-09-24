@@ -35,6 +35,7 @@
             :self="myPlayer"
             :highest="game.auction?.highest"
             :nameOf="nameOf"
+            :synced="isSynced"
             @place-bid="(ids:string[]) => emit('place-bid', myId, ids)"
             @pass="() => emit('pass-bid', myId)"
           />
@@ -179,6 +180,9 @@ watch(() => game.auction?.highest, (n, o) => { if (n && n !== o) bidderHighlight
 function nameOf(id: string) {
   return players.value.find(p => p.id === id)?.name ?? id;
 }
+
+// 初次載入：等到收到至少一次 Host 快照（stateVersion > 0）再允許互動
+const isSynced = computed(() => (game.stateVersion ?? 0) > 0);
 
 // Buyback local selection state
 const selectedMoneyIds = ref<string[]>([]);
