@@ -20,3 +20,6 @@ pnpm-debug.log*
 # TS build info
 /node_modules/.cache/
 .env
+
+# Local Netlify folder
+.netlify

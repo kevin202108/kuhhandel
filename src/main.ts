@@ -126,7 +126,7 @@ void (async function bootstrapPhase2() {
     }
 
     // 1) ????Ably嚗lientId === playerId嚗ormalize ??ablyClient.ts 銋?????甈∴?
-    await initAbly(PLAYER);
+    await initAbly(PLAYER, ROOM);
     if (DEBUG) console.debug('[main] Ably initialized as clientId=', PLAYER);
 
     // 2) ???駁?嚗ame-v1-{roomId}嚗?
@@ -534,7 +534,7 @@ function exposeDebugHelpers(isConnected: boolean) {
     PLAYER,
     init: async (playerId: string) => {
       const ROOM = readRoomId();
-      await initAbly(playerId);
+      await initAbly(playerId, ROOM);
       await getChannel(ROOM);
       await presence.enter(ROOM, { playerId, name: playerId });
       if (DEBUG) console.debug('[__ably.init] connected as', playerId);

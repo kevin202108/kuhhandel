@@ -8,9 +8,8 @@ import type { Envelope, MsgType } from '@/networking/protocol';
  */
 let client: Ably.Types.RealtimePromise | null = null;
 
-function requireApiKey(): string {
+function maybeApiKey(): string | undefined {
   const key = import.meta.env.VITE_ABLY_API_KEY as string | undefined;
-  if (!key) throw new Error('[Ably] Missing VITE_ABLY_API_KEY');
   return key;
 }
 
@@ -27,12 +26,27 @@ function channelName(roomId: string): string {
 }
 
 /** 初始化（若已建立則直接回傳現有實例） */
-export function initAbly(playerId: string): Ably.Types.RealtimePromise {
+export function initAbly(playerId: string, roomId?: string): Ably.Types.RealtimePromise {
   if (client) return client;
-  client = new Ably.Realtime.Promise({
-    key: requireApiKey(),
-    clientId: normalizeId(playerId),
-  });
+
+  const pid = normalizeId(playerId);
+  const key = maybeApiKey();
+
+  // Prefer Token Auth via Netlify Function. Fallback to key only if provided.
+  const cfg: Ably.Types.ClientOptions = key
+    ? { key, clientId: pid }
+    : (() => {
+        const authParams: Record<string, string> = { clientId: pid };
+        if (roomId) authParams.roomId = normalizeId(roomId);
+        return {
+          clientId: pid,
+          authUrl: '/.netlify/functions/ably-token',
+          authMethod: 'POST',
+          authParams,
+        } as Ably.Types.ClientOptions;
+      })();
+
+  client = new Ably.Realtime.Promise(cfg);
   return client!;
 }
 
