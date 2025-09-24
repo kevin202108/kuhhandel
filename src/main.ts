@@ -18,9 +18,8 @@ import { useAuctionStore } from '@/store/auction';
 import { useCowStore } from '@/store/cow';
 import { getHostId } from '@/services/host-election';
 
-// ---- URL flags嚗? README 閬?銝?湛?
+// ---- URL flags（僅保留 debug）
 const url = new URL(location.href);
-const ROOM = (url.searchParams.get('room') ?? 'dev').toLowerCase().trim();
 const DEBUG = url.searchParams.get('debug') === '1';
 
 // Session-scoped player identity (auto-generated), independent from URL
@@ -50,12 +49,9 @@ function readDisplayName(): string {
 
 const PLAYER = ensurePlayerId();
 
-// ?迂摮???README嚗[a-z0-9_-]{1,24}$嚗?
-const ID_RE = /^[a-z0-9_-]{1,24}$/;
-function assertIdOrThrow(id: string, kind: 'roomId' | 'playerId') {
-  if (!ID_RE.test(id)) {
-    throw new Error(`[main] Invalid ${kind} "${id}". Must match ${ID_RE.source}`);
-  }
+// Utility: read roomId/displayName from session
+function readRoomId(): string {
+  try { return (sessionStorage.getItem('roomId') || '').slice(0, 12); } catch { return ''; }
 }
 
 // ---- ?? Vue
@@ -121,7 +117,13 @@ void (async function bootstrapPhase2() {
       return;
     }
 
-    assertIdOrThrow(ROOM, 'roomId');
+    const ROOM = readRoomId();
+    const NAME = readDisplayName();
+    if (!ROOM || !NAME) {
+      if (DEBUG) console.debug('[main] Missing roomId or displayName — waiting for Setup to submit.');
+      exposeDebugHelpers(false);
+      return;
+    }
 
     // 1) ????Ably嚗lientId === playerId嚗ormalize ??ablyClient.ts 銋?????甈∴?
     await initAbly(PLAYER);
@@ -129,16 +131,10 @@ void (async function bootstrapPhase2() {
 
     // 2) ???駁?嚗ame-v1-{roomId}嚗?
     await getChannel(ROOM);
-    if (DEBUG) console.debug('[main] Channel attached:', `game-v1-${ROOM}`);
+    if (DEBUG) console.debug('[main] Channel attached (room):', ROOM);
 
     // 3) presence.enter嚗ame ? playerId嚗ameEntry 銋??航?撖恬?
     // Wait for displayName to be available before joining presence
-    const NAME = readDisplayName();
-    if (!NAME) {
-      if (DEBUG) console.debug('[main] No displayName yet — waiting for Setup to submit.');
-      exposeDebugHelpers(false);
-      return;
-    }
     await presence.enter(ROOM, { playerId: PLAYER, name: NAME });
     if (DEBUG) console.debug('[main] presence.enter ok');
 
@@ -534,15 +530,17 @@ function exposeDebugHelpers(isConnected: boolean) {
   if (w.__ably) return;
 
   w.__ably = {
-    ROOM,
+    get ROOM() { return readRoomId(); },
     PLAYER,
     init: async (playerId: string) => {
+      const ROOM = readRoomId();
       await initAbly(playerId);
       await getChannel(ROOM);
       await presence.enter(ROOM, { playerId, name: playerId });
       if (DEBUG) console.debug('[__ably.init] connected as', playerId);
     },
     getMembers: async () => {
+      const ROOM = readRoomId();
       const m = await presence.getMembers(ROOM);
       console.table(m);
       return m;
@@ -550,17 +548,19 @@ function exposeDebugHelpers(isConnected: boolean) {
     // ?潮?閮??憪?Envelope??
     publishRaw: async <T extends MsgType>(type: T, payload: unknown) => {
       // 雿輻 README ??makeEnvelope嚗enderId ?函???Ｙ? PLAYER
+      const ROOM = readRoomId();
       const env = makeEnvelope(type, ROOM, PLAYER || 'unknown', payload as never);
       await publishRaw(ROOM, type, env);
       if (DEBUG) console.debug('[PUB]', type, env);
     },
     subscribeRaw: <T extends MsgType>(type: T) => {
+      const ROOM = readRoomId();
       const off = subscribeRaw(ROOM, type, (env) => {
         console.debug('[RECV]', type, env);
       });
       return off;
     },
-    leave: async () => presence.leave(ROOM),
+    leave: async () => presence.leave(readRoomId()),
     close: () => closeAbly(),
     _connected: isConnected,
   };

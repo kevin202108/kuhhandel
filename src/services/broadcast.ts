@@ -6,7 +6,8 @@
 // - ablyClient.subscribeRaw(roomId, type, cb)
 // - ablyClient.presence 是物件，方法簽名需傳 roomId
 // - 不依賴 getClientId/getRoomId（因為 ablyClient.ts 未輸出）
-// - senderId ≡ playerId（取自 URL 旗標或全域 __PLAYER__），roomId 取 __ROOM__ 或 ?room=
+// - senderId ≡ playerId（取自全域 __PLAYER__ 或 sessionStorage）
+// - roomId 來源：globalThis.__ROOM__ 或 sessionStorage.roomId（由 Setup 輸入），允許任意字元，長度 12
 //
 // Debug（可選）：?debug=1（或 globalThis.__DEBUG__ = true）時輸出 [PUB]/[RECV]
 
@@ -49,10 +50,9 @@ function isDebug(): boolean {
   return Boolean(g.__DEBUG__ === true || readQuery('debug') === '1');
 }
 
-/** 依 README 規範正規化 id（[a-z0-9_-]{1,24}；空字串則退回 'dev'） */
-function normalizeId(raw: string | undefined): string {
-  const s = (raw ?? '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 24);
-  return s || 'dev';
+/** 保留任意字元，只裁切長度（room: 最多 12；player: 另見 resolvePlayerId） */
+function clampLen(raw: string | undefined, max = 12): string {
+  return (raw ?? '').slice(0, max);
 }
 
 function readQuery(key: string): string | undefined {
@@ -65,12 +65,15 @@ function readQuery(key: string): string | undefined {
   }
 }
 
-/** 依 README／Dev 旗標決定 roomId / playerId（與 main.ts 一致） */
+/** roomId 來源：globalThis.__ROOM__ > sessionStorage.roomId；允許任意字元，僅裁切到 12。 */
 function resolveRoomId(): string {
   const g = globalThis as unknown as Record<string, unknown>;
   const fromGlobal = typeof g.__ROOM__ === 'string' ? (g.__ROOM__ as string) : undefined;
-  const fromQuery = readQuery('room');
-  return normalizeId(fromGlobal ?? fromQuery);
+  let fromSession: string | undefined;
+  try { fromSession = sessionStorage.getItem('roomId') || undefined; } catch { fromSession = undefined; }
+  const room = clampLen(fromGlobal ?? fromSession, 12);
+  if (!room) throw new Error('[Broadcast] Missing roomId (__ROOM__ or sessionStorage.roomId)');
+  return room;
 }
 
 function resolvePlayerId(): string {
@@ -83,7 +86,7 @@ function resolvePlayerId(): string {
     fromSession = undefined;
   }
 
-  // Sanitize strictly for playerId (no fallback to 'dev')
+  // PlayerId 仍採安全字元集，長度 24（與現有流程一致）。
   const raw = fromGlobal ?? fromSession;
   const id = (raw ?? '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 24);
   if (!id) {

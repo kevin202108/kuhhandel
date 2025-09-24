@@ -14,14 +14,16 @@ function requireApiKey(): string {
   return key;
 }
 
-/** 將 roomId 正規化成 README 規範的 [a-z0-9_-]{1,24} */
+/** 將 playerId 正規化（[a-z0-9_-]{1,24}） */
 function normalizeId(raw: string): string {
   const s = (raw ?? '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 24);
   return s || 'dev';
 }
 
 function channelName(roomId: string): string {
-  return `game-v1-${normalizeId(roomId)}`;
+  // Room 允許任意字元，但僅限 12 字；為避免 Ably 將特殊符號誤判為參數，這裡以 encodeURIComponent 安全嵌入。
+  const safe = encodeURIComponent((roomId ?? '').slice(0, 12));
+  return `game-v1-${safe}`;
 }
 
 /** 初始化（若已建立則直接回傳現有實例） */

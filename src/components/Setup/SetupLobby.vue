@@ -2,19 +2,28 @@
   <div class="setup-lobby">
     <h1>幕後交易 KUHHANDEL</h1>
 
-    <!-- NameEntry when displayName is not set -->
-    <div v-if="!hasDisplayName" class="ui-panel">
-      <h2>Enter Your Display Name</h2>
+    <!-- NameEntry when displayName or roomId is not set -->
+    <div v-if="!hasDisplayName || !hasRoom" class="ui-panel">
+      <h2>Enter Your Name & Room</h2>
       <div class="players-setup">
         <div class="player-row">
           <input
             v-model.trim="name"
-            placeholder="最多 12 字（任意字元）"
+            placeholder="Your name（最多 12 字，任意字元）"
             maxlength="12"
           />
+        </div>
+        <div class="player-row">
+          <input
+            v-model.trim="room"
+            placeholder="Room（最多 12 字，任意字元）"
+            maxlength="12"
+          />
+        </div>
+        <div class="player-row">
           <button class="ui-btn is-primary" :disabled="!canSubmit" @click="submitName">Join</button>
         </div>
-        <p class="hint">Display name is for UI only (max 12 chars).</p>
+        <p class="hint">Both display name and room accept any characters, max 12.</p>
       </div>
     </div>
 
@@ -52,16 +61,18 @@ const emit = defineEmits<{ 'start-game': [] }>();
 const game = useGameStore();
 
 // Local identity and room label
-const url = new URL(location.href);
 const myId = ((globalThis as any).__PLAYER__ as string) || (sessionStorage.getItem('playerId') || '');
-const roomId = (url.searchParams.get('room') ?? 'dev').toLowerCase().trim();
+const roomId = (sessionStorage.getItem('roomId') || '').slice(0, 12);
 const hasDisplayName = !!(sessionStorage.getItem('displayName') || '');
+const hasRoom = !!roomId;
 
 // Inline form state
 const name = ref('');
+const room = ref('');
 const canSubmit = computed(() => {
-  const t = name.value.trim();
-  return t.length > 0 && t.length <= 12;
+  const n = name.value.trim();
+  const r = room.value.trim();
+  return n.length > 0 && n.length <= 12 && r.length > 0 && r.length <= 12;
 });
 
 // Presence members
@@ -76,11 +87,16 @@ const hostIdLabel = computed(() => game.hostId || members.value.map(m => m.id).s
 // Start gating (Host only, >=2 members)
 const canStartOnline = computed(() => (hostIdLabel.value === myId) && members.value.length >= 2);
 
-// NameEntry confirm (store then reload)
+// NameEntry confirm (store name + room then reload)
 function submitName() {
   if (!canSubmit.value) return;
-  const t = name.value.trim().slice(0, 12);
-  try { sessionStorage.setItem('displayName', t); } catch { /* ignore */ }
+  const n = name.value.trim().slice(0, 12);
+  const r = room.value.trim().slice(0, 12);
+  try {
+    sessionStorage.setItem('displayName', n);
+    sessionStorage.setItem('roomId', r);
+  } catch { /* ignore */ }
+  (globalThis as any).__ROOM__ = r;
   location.reload();
 }
 
@@ -89,9 +105,11 @@ function onStartGame() {
 }
 
 onMounted(() => {
-  void refreshPresence();
-  const t = window.setInterval(() => { void refreshPresence(); }, 1200);
-  (window as any).__setupPresenceTimer = t;
+  if (hasRoom) {
+    void refreshPresence();
+    const t = window.setInterval(() => { void refreshPresence(); }, 1200);
+    (window as any).__setupPresenceTimer = t;
+  }
 });
 
 onUnmounted(() => {
