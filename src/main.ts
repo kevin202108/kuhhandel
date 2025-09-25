@@ -223,7 +223,15 @@ void (async function bootstrapPhase2() {
         if (!accept(env.type, env.senderId, env.actionId, env.ts)) return;
         if (env.senderId !== game.hostId) return;
         const ms = await presence.getMembers(ROOM);
-        const players = ms.map((m) => ({ id: m.id, name: (m.data as any)?.name || m.id }));
+        // 額外保險：依 id 去重（即使底層已做去重）
+        const uniq = new Map<string, { id: string; name: string }>();
+        for (const m of ms) {
+          const id = m.id;
+          if (!id) continue;
+          const name = (m.data as any)?.name || id;
+          if (!uniq.has(id)) uniq.set(id, { id, name });
+        }
+        const players = Array.from(uniq.values());
         game.setupGame(players);
         game.startTurn();
       });
@@ -516,6 +524,10 @@ void (async function bootstrapPhase2() {
     window.addEventListener('beforeunload', () => {
       void presence.leave(ROOM);
       // closeAbly() ?舫嚗虜銝???beforeunload ?澆
+    });
+    // Safari / bfcache 友善：在 pagehide 也嘗試離場，降低殘留機率
+    window.addEventListener('pagehide', () => {
+      void presence.leave(ROOM);
     });
 
     // 6) DEBUG嚗??箸???

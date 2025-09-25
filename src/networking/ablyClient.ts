@@ -111,7 +111,18 @@ export const presence = {
   async getMembers(roomId: string) {
     const ch = getChannel(roomId);
     const members = await ch.presence.get(); // Ably => PresenceMessage[]
-    return members.map((m) => ({
+    // 去重：同一 clientId 可能因為上一次連線未及時離場而暫時出現多筆
+    // 取 timestamp 較新的那筆，避免 UI/邏輯將同一玩家視為多人
+    const byId = new Map<string, Ably.Types.PresenceMessage>();
+    for (const m of members) {
+      const id = m.clientId ?? '';
+      if (!id) continue;
+      const prev = byId.get(id);
+      if (!prev || ((m.timestamp || 0) > (prev.timestamp || 0))) {
+        byId.set(id, m);
+      }
+    }
+    return Array.from(byId.values()).map((m) => ({
       id: m.clientId ?? '', // 我們的 Identity Contract：id === clientId
       data: (m.data ?? {}) as { playerId: string; name: string },
     }));
